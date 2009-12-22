@@ -16,6 +16,6 @@ in_ca() ->
 %%---------------------------------------------------------------------------
 
 start() ->
-  CompiledTemplate = mustache:compile("simple.mustache"),
-  Output = mustache:execute(CompiledTemplate),
+  code:add_patha(".."),
+  Output = mustache:render(simple, "simple.mustache"),
   io:format(Output, []).

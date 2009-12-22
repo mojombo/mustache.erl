@@ -1,9 +1,14 @@
--module(mustache).
+-module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([start/0]).
+-export([render/1, compile/1, start/0]).
 
 -record(mstate, {section_re = undefined,
                  tag_re = undefined}).
+
+render(Mod, F) ->
+  {ok, TemplateBin} = file:read_file(F),
+  CompiledTemplate = compile(binary_to_list(TemplateBin)),
+  
 
 compile(T) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
