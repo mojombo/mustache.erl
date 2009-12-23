@@ -1,6 +1,6 @@
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([compile/2, render/2, val/3, start/1]).
+-export([compile/2, render/2, render/3, val/3, start/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
@@ -18,13 +18,18 @@ compile(Mod, File) ->
   Form.
 
 render(Mod, File) when is_list(File) ->
+  render(Mod, File, dict:new());
+render(Mod, CompiledTemplate) ->
+  render(Mod, CompiledTemplate, dict:new()).
+
+render(Mod, File, Ctx) when is_list(File) ->
   CompiledTemplate = compile(Mod, File),
   render(Mod, CompiledTemplate);
-render(Mod, CompiledTemplate) ->
+render(Mod, CompiledTemplate, Ctx) ->
   code:load_file(Mod),
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(CompiledTemplate, Bindings),
-  lists:flatten(Fun(dict:new())).
+  lists:flatten(Fun(Ctx)).
 
 pre_compile(T, State) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
