@@ -1,6 +1,6 @@
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([compile/2, render/2, render/3, val/3, start/1]).
+-export([compile/2, render/2, render/3, get/2, get/3, start/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
@@ -27,9 +27,10 @@ render(Mod, File, Ctx) when is_list(File) ->
   render(Mod, CompiledTemplate, Ctx);
 render(Mod, CompiledTemplate, Ctx) ->
   code:load_file(Mod),
+  Ctx2 = dict:store('__mod__', Mod, Ctx),
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(CompiledTemplate, Bindings),
-  lists:flatten(Fun(Ctx)).
+  lists:flatten(Fun(Ctx2)).
 
 pre_compile(T, State) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
@@ -60,7 +61,7 @@ compile_section(Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case mustache:val(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "true -> " ++
         Result ++ "; " ++
       "false -> " ++
@@ -93,13 +94,20 @@ tag_kind(T, {K0, K1}) ->
 
 compile_tag(none, Content, State) ->
   Mod = State#mstate.mod,
-  "mustache:val(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")";
+  "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")";
 compile_tag("!", _Content, _State) ->
   "[]".
 
-val(Key, Ctx, Mod) when is_list(Key) ->
-  val(list_to_atom(Key), Ctx, Mod);
-val(Key, Ctx, Mod) ->
+get(Key, Ctx) when is_list(Key) ->
+  {ok, Mod} = dict:find('__mod__', Ctx),
+  get(list_to_atom(Key), Ctx, Mod);
+get(Key, Ctx) ->
+  {ok, Mod} = dict:find('__mod__', Ctx),
+  get(Key, Ctx, Mod).
+
+get(Key, Ctx, Mod) when is_list(Key) ->
+  get(list_to_atom(Key), Ctx, Mod);
+get(Key, Ctx, Mod) ->
   case dict:find(Key, Ctx) of
     {ok, Val} -> to_s(Val);
     error ->

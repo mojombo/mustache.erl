@@ -11,7 +11,7 @@ item() ->
   [A, B, C].
 
 link(Ctx) ->
-  {ok, Val} = dict:find(current, Ctx), Val.
+  mustache:get(current, Ctx).
 
 list() ->
   length(item()) =/= 0.
