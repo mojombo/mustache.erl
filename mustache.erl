@@ -19,8 +19,7 @@ run(CompiledTemplate) ->
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
-  Out = lists:flatten(Fun()),
-  io:format("~p~n", [Out]).
+  lists:flatten(Fun()).
 
 pre_compile(T, State) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
@@ -32,7 +31,6 @@ pre_compile(T, State) ->
 
 compile(T, State) ->
   Res = re:run(T, State#mstate.section_re),
-  io:format("~p~n", [Res]),
   case Res of
     {match, [{M0, M1}, {N0, N1}, {C0, C1}]} ->
       Front = string:substr(T, 1, M0),
@@ -63,7 +61,6 @@ compile_section(Name, Content, State) ->
 
 compile_tags(T, State) ->
   Res = re:run(T, State#mstate.tag_re),
-  io:format("~p~n", [Res]),
   case Res of
     {match, [{M0, M1}, K, {C0, C1}]} ->
       Front = string:substr(T, 1, M0),
@@ -93,23 +90,30 @@ val(Key, Ctx, Mod) when is_list(Key) ->
   val(list_to_atom(Key), Ctx, Mod);
 val(Key, Ctx, Mod) ->
   case dict:find(Key, Ctx) of
-    {ok, Val} -> Val;
+    {ok, Val} -> to_s(Val);
     error ->
       case erlang:function_exported(Mod, Key, 0) of
         true ->
-          apply(Mod, Key, []);
+          to_s(apply(Mod, Key, []));
         false ->
           []
       end
   end.
 
+to_s(Val) when is_integer(Val) ->
+  integer_to_list(Val);
+to_s(Val) when is_float(Val) ->
+  io_lib:format("~.2f", [Val]);
+to_s(Val) when is_boolean(Val) ->
+  Val;
+to_s(Val) when is_atom(Val) ->
+  atom_to_list(Val);
+to_s(Val) ->
+  Val.
+
 %%---------------------------------------------------------------------------
 
 start([T]) ->
-  % T = "Hello {{name}}\nYou have just won ${{value}}!\n{{#in_ca}}\nWell, ${{ taxed_value }}, after taxes.\n{{/in_ca}}\n",
-  % T = "abc {{#foo}} hi {{/foo}} def {{#bar}} bye {{/bar}} ghi\n",
-  % T = "hello {{name}} you {{#in_ca}} DO {{/in_ca}} win {{value}}!",
-  % D = compile(T),
-  %io:format(D ++ "~n", []).
-  render(list_to_atom(T), "examples/" ++ T ++ ".mustache").
+  Out = render(list_to_atom(T), "examples/" ++ T ++ ".mustache"),
+  io:format("~p~n", [Out]).
       
