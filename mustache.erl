@@ -1,6 +1,6 @@
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([compile/2, render/2, render/3, get/2, get/3, start/1]).
+-export([compile/2, render/2, render/3, get/2, get/3, escape/1, start/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
@@ -94,6 +94,9 @@ tag_kind(T, {K0, K1}) ->
 
 compile_tag(none, Content, State) ->
   Mod = State#mstate.mod,
+  "mustache:escape(mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))";
+compile_tag("{", Content, State) ->
+  Mod = State#mstate.mod,
   "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")";
 compile_tag("!", _Content, _State) ->
   "[]".
@@ -134,6 +137,20 @@ to_s(Val) when is_atom(Val) ->
   atom_to_list(Val);
 to_s(Val) ->
   Val.
+
+escape(HTML) ->
+  escape(HTML, []).
+
+escape([], Acc) ->
+  lists:reverse(Acc);
+escape(["<" | Rest], Acc) ->
+  escape(Rest, lists:reverse("&lt;", Acc));
+escape([">" | Rest], Acc) ->
+  escape(Rest, lists:reverse("&gt;", Acc));
+escape(["&" | Rest], Acc) ->
+  escape(Rest, lists:reverse("&amp;", Acc));
+escape([X | Rest], Acc) ->
+  escape(Rest, [X | Acc]).
 
 %%---------------------------------------------------------------------------
 
