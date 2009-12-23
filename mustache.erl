@@ -14,7 +14,8 @@ render(Mod, File) ->
   run(CompiledTemplate).
 
 run(CompiledTemplate) ->
-  io:format("~p~n", [CompiledTemplate]),
+  io:format("~p~n~n", [CompiledTemplate]),
+  io:format(CompiledTemplate ++ "~n", []),
   {ok, Tokens, _} = erl_scan:string(CompiledTemplate),
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
   Bindings = erl_eval:new_bindings(),
@@ -27,7 +28,10 @@ pre_compile(T, State) ->
   TagRE = "\{\{(#|=|!|<|>|\{)?(.+?)\\1?\}\}+",
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
-  "fun() -> Ctx = dict:new(), " ++ compile(T, State2) ++ " end.".
+  "fun() -> " ++
+    "Ctx = dict:new(), " ++ 
+    "CFun = fun(A, B) -> A end, " ++
+    compile(T, State2) ++ " end.".
 
 compile(T, State) ->
   Res = re:run(T, State#mstate.section_re),
@@ -55,7 +59,8 @@ compile_section(Name, Content, State) ->
       "false -> " ++
         "[]; " ++
       "List when is_list(List) -> " ++
-        "[" ++ Result ++ " || X <- List] " ++
+        "LFun = fun(Ctx) -> " ++ Result ++ " end, " ++
+        "[LFun(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List] " ++
     "end " ++
   "end()".
 
