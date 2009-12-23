@@ -37,7 +37,15 @@ compile(T, State) ->
 compile_section(Name, Content, State) ->
   Result = compile(Content, State),
   % "<" ++ Name ++ ">" ++ Result ++ "</" ++ Name ++ ">".
-  "fun() -> " ++ Result ++ " end()".
+  "fun() -> " ++
+    "Res = apply(simple, " ++ Name ++ ", []), " ++
+    "case Res of " ++
+      "true -> " ++
+        Result ++ "; " ++
+      "false -> " ++
+        "[] " ++
+    "end " ++
+  "end()".
 
 compile_tags(T, State) ->
   Res = re:run(T, State#mstate.tag_re),
@@ -71,7 +79,7 @@ compile_tag("!", _Content) ->
 start() ->
   % T = "Hello {{name}}\nYou have just won ${{value}}!\n{{#in_ca}}\nWell, ${{ taxed_value }}, after taxes.\n{{/in_ca}}\n",
   % T = "abc {{#foo}} hi {{/foo}} def {{#bar}} bye {{/bar}} ghi\n",
-  T = "hello {{!name}} you {{#in_ca}} DO {{/in_ca}} win {{value}}!",
+  T = "hello {{name}} you {{#in_ca}} DO {{/in_ca}} win {{value}}!",
   D = compile(T),
   io:format(D, []).
       
