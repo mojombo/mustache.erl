@@ -9,8 +9,9 @@
 render(Mod, File) ->
   code:load_file(Mod),
   {ok, TemplateBin} = file:read_file(File),
+  Template = re:replace(TemplateBin, "\"", "\\\\\"", [global, {return,list}]),
   State = #mstate{mod = Mod},
-  CompiledTemplate = pre_compile(binary_to_list(TemplateBin), State),
+  CompiledTemplate = pre_compile(Template, State),
   run(CompiledTemplate).
 
 run(CompiledTemplate) ->
@@ -52,15 +53,13 @@ compile_section(Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compile(Content, State),
   "fun() -> " ++
-    "Res = mustache:val(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ "), " ++
-    "case Res of " ++
+    "case mustache:val(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "true -> " ++
         Result ++ "; " ++
       "false -> " ++
         "[]; " ++
       "List when is_list(List) -> " ++
-        "LFun = fun(Ctx) -> " ++ Result ++ " end, " ++
-        "[LFun(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List] " ++
+        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List] " ++
     "end " ++
   "end()".
 
