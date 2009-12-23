@@ -21,7 +21,7 @@ run(CompiledTemplate) ->
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
-  lists:flatten(Fun()).
+  lists:flatten(Fun(dict:new())).
 
 pre_compile(T, State) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
@@ -29,8 +29,7 @@ pre_compile(T, State) ->
   TagRE = "\{\{(#|=|!|<|>|\{)?(.+?)\\1?\}\}+",
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
-  "fun() -> " ++
-    "Ctx = dict:new(), " ++ 
+  "fun(Ctx) -> " ++
     "CFun = fun(A, B) -> A end, " ++
     compile(T, State2) ++ " end.".
 
