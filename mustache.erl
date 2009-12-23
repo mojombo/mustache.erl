@@ -1,21 +1,26 @@
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([render/2, val/3, start/1]).
+-export([render/2, run/1, val/3, start/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
                  tag_re = undefined}).
 
 render(Mod, File) ->
+  code:load_file(Mod),
   {ok, TemplateBin} = file:read_file(File),
   State = #mstate{mod = Mod},
   CompiledTemplate = pre_compile(binary_to_list(TemplateBin), State),
-  io:format(CompiledTemplate ++ "~n", []),
+  run(CompiledTemplate).
+
+run(CompiledTemplate) ->
+  io:format("~p~n", [CompiledTemplate]),
   {ok, Tokens, _} = erl_scan:string(CompiledTemplate),
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
-  Fun().
+  Out = lists:flatten(Fun()),
+  io:format("~p~n", [Out]).
 
 pre_compile(T, State) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
@@ -44,9 +49,8 @@ compile(T, State) ->
 compile_section(Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compile(Content, State),
-  % "<" ++ Name ++ ">" ++ Result ++ "</" ++ Name ++ ">".
   "fun() -> " ++
-    "Res = mustache:val(" ++ Name ++ ", Ctx, " ++ Mod ++ "), " ++
+    "Res = mustache:val(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ "), " ++
     "case Res of " ++
       "true -> " ++
         Result ++ "; " ++
@@ -81,7 +85,7 @@ tag_kind(T, {K0, K1}) ->
 
 compile_tag(none, Content, State) ->
   Mod = State#mstate.mod,
-  "apply(" ++ Mod ++ ", " ++ Content ++ ", [])";
+  "mustache:val(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")";
 compile_tag("!", _Content, _State) ->
   "[]".
 
@@ -101,11 +105,11 @@ val(Key, Ctx, Mod) ->
 
 %%---------------------------------------------------------------------------
 
-start(T) ->
+start([T]) ->
   % T = "Hello {{name}}\nYou have just won ${{value}}!\n{{#in_ca}}\nWell, ${{ taxed_value }}, after taxes.\n{{/in_ca}}\n",
   % T = "abc {{#foo}} hi {{/foo}} def {{#bar}} bye {{/bar}} ghi\n",
   % T = "hello {{name}} you {{#in_ca}} DO {{/in_ca}} win {{value}}!",
   % D = compile(T),
   %io:format(D ++ "~n", []).
-  render(T, "examples/" ++ T ++ ".mustache").
+  render(list_to_atom(T), "examples/" ++ T ++ ".mustache").
       
