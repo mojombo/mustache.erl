@@ -119,5 +119,5 @@ to_s(Val) ->
 
 start([T]) ->
   Out = render(list_to_atom(T), "examples/" ++ T ++ ".mustache"),
-  io:format("~p~n", [Out]).
+  io:format(Out ++ "~n", []).
       
