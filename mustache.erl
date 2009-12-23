@@ -1,26 +1,29 @@
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([render/2, run/1, val/3, start/1]).
+-export([compile/2, render/2, val/3, start/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
                  tag_re = undefined}).
 
-render(Mod, File) ->
-  code:load_file(Mod),
+compile(Mod, File) ->
   {ok, TemplateBin} = file:read_file(File),
   Template = re:replace(TemplateBin, "\"", "\\\\\"", [global, {return,list}]),
   State = #mstate{mod = Mod},
   CompiledTemplate = pre_compile(Template, State),
-  run(CompiledTemplate).
-
-run(CompiledTemplate) ->
   io:format("~p~n~n", [CompiledTemplate]),
   io:format(CompiledTemplate ++ "~n", []),
   {ok, Tokens, _} = erl_scan:string(CompiledTemplate),
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
+  Form.
+
+render(Mod, File) when is_list(File) ->
+  CompiledTemplate = compile(Mod, File),
+  render(Mod, CompiledTemplate);
+render(Mod, CompiledTemplate) ->
+  code:load_file(Mod),
   Bindings = erl_eval:new_bindings(),
-  {value, Fun, _} = erl_eval:expr(Form, Bindings),
+  {value, Fun, _} = erl_eval:expr(CompiledTemplate, Bindings),
   lists:flatten(Fun(dict:new())).
 
 pre_compile(T, State) ->
@@ -31,9 +34,9 @@ pre_compile(T, State) ->
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
   "fun(Ctx) -> " ++
     "CFun = fun(A, B) -> A end, " ++
-    compile(T, State2) ++ " end.".
+    compiler(T, State2) ++ " end.".
 
-compile(T, State) ->
+compiler(T, State) ->
   Res = re:run(T, State#mstate.section_re),
   case Res of
     {match, [{M0, M1}, {N0, N1}, {C0, C1}]} ->
@@ -43,14 +46,14 @@ compile(T, State) ->
       Content = string:substr(T, C0 + 1, C1),
       "[" ++ compile_tags(Front, State) ++
         " | [" ++ compile_section(Name, Content, State) ++
-        " | [" ++ compile(Back, State) ++ "]]]";
+        " | [" ++ compiler(Back, State) ++ "]]]";
     nomatch ->
       compile_tags(T, State)
   end.
 
 compile_section(Name, Content, State) ->
   Mod = State#mstate.mod,
-  Result = compile(Content, State),
+  Result = compiler(Content, State),
   "fun() -> " ++
     "case mustache:val(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "true -> " ++
