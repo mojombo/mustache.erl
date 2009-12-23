@@ -10,11 +10,18 @@ item() ->
   C = dict:from_list([{name, "blue"}, {current, false}, {url, "#Blue"}]),
   [A, B, C].
 
-link() ->
-  true.
+link(Ctx) ->
+  {ok, Val} = dict:find(current, Ctx), Val.
 
 list() ->
   length(item()) =/= 0.
 
 empty() ->
   length(item()) =:= 0.
+
+%%---------------------------------------------------------------------------
+
+start() ->
+  code:add_patha(".."),
+  Output = mustache:render(complex, "complex.mustache"),
+  io:format(Output, []).

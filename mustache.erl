@@ -96,11 +96,16 @@ val(Key, Ctx, Mod) ->
   case dict:find(Key, Ctx) of
     {ok, Val} -> to_s(Val);
     error ->
-      case erlang:function_exported(Mod, Key, 0) of
+      case erlang:function_exported(Mod, Key, 1) of
         true ->
-          to_s(apply(Mod, Key, []));
+          to_s(apply(Mod, Key, [Ctx]));
         false ->
-          []
+          case erlang:function_exported(Mod, Key, 0) of
+            true ->
+              to_s(apply(Mod, Key, []));
+            false ->
+              []
+          end
       end
   end.
 
