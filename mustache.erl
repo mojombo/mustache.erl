@@ -24,7 +24,7 @@ render(Mod, CompiledTemplate) ->
 
 render(Mod, File, Ctx) when is_list(File) ->
   CompiledTemplate = compile(Mod, File),
-  render(Mod, CompiledTemplate);
+  render(Mod, CompiledTemplate, Ctx);
 render(Mod, CompiledTemplate, Ctx) ->
   code:load_file(Mod),
   Bindings = erl_eval:new_bindings(),

@@ -17,5 +17,6 @@ in_ca() ->
 
 start() ->
   code:add_patha(".."),
-  Output = mustache:render(simple, "simple.mustache"),
+  Ctx = dict:from_list([{name, "TPW"}]),
+  Output = mustache:render(simple, "simple.mustache", Ctx),
   io:format(Output, []).
