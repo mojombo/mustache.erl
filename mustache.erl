@@ -45,7 +45,7 @@ compile(T, State) ->
         " | [" ++ compile_section(Name, Content, State) ++
         " | [" ++ compile(Back, State) ++ "]]]";
     nomatch ->
-      "[" ++ compile_tags(T, State) ++ "]"
+      compile_tags(T, State)
   end.
 
 compile_section(Name, Content, State) ->

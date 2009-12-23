@@ -14,7 +14,7 @@ link() ->
   true.
 
 list() ->
-  length(item()) =:= 0.
+  length(item()) =/= 0.
 
 empty() ->
-  length(item()) =/= 0.
+  length(item()) =:= 0.
