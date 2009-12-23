@@ -1,13 +1,13 @@
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([render/1, compile/1, start/0]).
+-export([render/2, compile/1, start/0]).
 
 -record(mstate, {section_re = undefined,
                  tag_re = undefined}).
 
-render(Mod, F) ->
-  {ok, TemplateBin} = file:read_file(F),
-  CompiledTemplate = compile(binary_to_list(TemplateBin)),
+render(Mod, F) -> ok.
+%   {ok, TemplateBin} = file:read_file(F),
+%   CompiledTemplate = compile(binary_to_list(TemplateBin)),
   
 
 compile(T) ->
@@ -27,14 +27,17 @@ compile(T, State) ->
       Back = string:substr(T, M0 + M1 + 1),
       Name = string:substr(T, N0 + 1, N1),
       Content = string:substr(T, C0 + 1, C1),
-      compile_tags(Front, State) ++ compile_section(Name, Content, State) ++ compile(Back, State);
+      "[" ++ compile_tags(Front, State) ++
+        " | [" ++ compile_section(Name, Content, State) ++
+        " | [" ++ compile(Back, State) ++ "]]]";
     nomatch ->
-      compile_tags(T, State)
+      "[" ++ compile_tags(T, State) ++ "]"
   end.
 
 compile_section(Name, Content, State) ->
   Result = compile(Content, State),
-  "<" ++ Name ++ ">" ++ Result ++ "</" ++ Name ++ ">".
+  % "<" ++ Name ++ ">" ++ Result ++ "</" ++ Name ++ ">".
+  "fun() -> " ++ Result ++ " end()".
 
 compile_tags(T, State) ->
   Res = re:run(T, State#mstate.tag_re),
@@ -46,9 +49,11 @@ compile_tags(T, State) ->
       Content = string:substr(T, C0 + 1, C1),
       Kind = tag_kind(T, K),
       Result = compile_tag(Kind, Content),
-      Front ++ "<" ++ Result ++ ">" ++ compile_tags(Back, State);
+      "[\"" ++ Front ++ 
+        "\" | [" ++ Result ++ 
+        " | " ++ compile_tags(Back, State) ++ "]]";
     nomatch ->
-      T
+      "[\"" ++ T ++ "\"]"
   end.
 
 tag_kind(T, {-1, 0}) ->
@@ -57,15 +62,16 @@ tag_kind(T, {K0, K1}) ->
   string:substr(T, K0 + 1, K1).
 
 compile_tag(none, Content) ->
-  Content;
-compile_tag("!", Content) ->
-  "".
+  "apply(simple, " ++ Content ++ ", [])";
+compile_tag("!", _Content) ->
+  "[]".
 
 %%---------------------------------------------------------------------------
 
 start() ->
-  T = "Hello {{name}}\nYou have just won ${{value}}!\n{{#in_ca}}\nWell, ${{ taxed_value }}, after taxes.\n{{/in_ca}}\n",
+  % T = "Hello {{name}}\nYou have just won ${{value}}!\n{{#in_ca}}\nWell, ${{ taxed_value }}, after taxes.\n{{/in_ca}}\n",
   % T = "abc {{#foo}} hi {{/foo}} def {{#bar}} bye {{/bar}} ghi\n",
+  T = "hello {{!name}} you {{#in_ca}} DO {{/in_ca}} win {{value}}!",
   D = compile(T),
   io:format(D, []).
       
