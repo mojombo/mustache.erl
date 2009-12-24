@@ -116,19 +116,19 @@ get(Key, Ctx, Mod) when is_list(Key) ->
 get(Key, Ctx, Mod) ->
   case dict:find(Key, Ctx) of
     {ok, Val} ->
-      io:format("From Ctx {~p, ~p}~n", [Key, Val]),
+      % io:format("From Ctx {~p, ~p}~n", [Key, Val]),
       to_s(Val);
     error ->
       case erlang:function_exported(Mod, Key, 1) of
         true ->
           Val = to_s(apply(Mod, Key, [Ctx])),
-          io:format("From Mod/1 {~p, ~p}~n", [Key, Val]),
+          % io:format("From Mod/1 {~p, ~p}~n", [Key, Val]),
           Val;
         false ->
           case erlang:function_exported(Mod, Key, 0) of
             true ->
               Val = to_s(apply(Mod, Key, [])),
-              io:format("From Mod/0 {~p, ~p}~n", [Key, Val]),
+              % io:format("From Mod/0 {~p, ~p}~n", [Key, Val]),
               Val;
             false ->
               []

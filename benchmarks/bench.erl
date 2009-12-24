@@ -2,12 +2,12 @@
 -export([run/0]).
 
 run() ->
-  % Ctx0 = dict:from_list([{header, "Chris"}, {empty, false}, {list, true}]),
-  % A = dict:from_list([{name, "red"}, {current, true}, {url, "#Red"}]),
-  % B = dict:from_list([{name, "green"}, {current, false}, {url, "#Green"}]),
-  % C = dict:from_list([{name, "blue"}, {current, false}, {url, "#Blue"}]),
-  % Ctx1 = dict:store(item, [A, B, C], Ctx0),
-  Ctx1 = dict:new(),
+  Ctx0 = dict:from_list([{header, "Chris"}, {empty, false}, {list, true}]),
+  A = dict:from_list([{name, "red"}, {current, true}, {url, "#Red"}]),
+  B = dict:from_list([{name, "green"}, {current, false}, {url, "#Green"}]),
+  C = dict:from_list([{name, "blue"}, {current, false}, {url, "#Blue"}]),
+  Ctx1 = dict:store(item, [A, B, C], Ctx0),
+  % Ctx1 = dict:new(),
   CT = mustache:compile(complex, "../examples/complex.mustache"),
   T0 = erlang:now(),
   render(CT, Ctx1, 100),
@@ -20,7 +20,7 @@ render(_CT, _Ctx, 0) ->
   ok;
 render(CT, Ctx, N) ->
   Out = mustache:render(complex, CT, Ctx),
-  io:format(Out, []),
-  % 0 = length(Out),
+  % io:format(Out, []),
+  158 = length(Out),
   io:format(".", []),
   render(CT, Ctx, N - 1).
