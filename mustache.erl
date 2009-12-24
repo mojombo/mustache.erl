@@ -17,7 +17,9 @@ compile(Mod, File) ->
   % io:format(CompiledTemplate ++ "~n", []),
   {ok, Tokens, _} = erl_scan:string(CompiledTemplate),
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
-  Form.
+  Bindings = erl_eval:new_bindings(),
+  {value, Fun, _} = erl_eval:expr(Form, Bindings),
+  Fun.
 
 render(Mod, File) when is_list(File) ->
   render(Mod, File, dict:new());
@@ -29,9 +31,7 @@ render(Mod, File, Ctx) when is_list(File) ->
   render(Mod, CompiledTemplate, Ctx);
 render(Mod, CompiledTemplate, Ctx) ->
   Ctx2 = dict:store('__mod__', Mod, Ctx),
-  Bindings = erl_eval:new_bindings(),
-  {value, Fun, _} = erl_eval:expr(CompiledTemplate, Bindings),
-  lists:flatten(Fun(Ctx2)).
+  lists:flatten(CompiledTemplate(Ctx2)).
 
 pre_compile(T, State) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",

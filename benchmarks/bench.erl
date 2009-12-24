@@ -14,6 +14,7 @@ run() ->
   T1 = erlang:now(),
   Diff = timer:now_diff(T1, T0),
   Mean = Diff / 100,
+  io:format("~nTotal time: ~.2fs~n", [Diff / 1000000]),
   io:format("Mean render time: ~.2fms~n", [Mean / 1000]).
 
 render(_CT, _Ctx, 0) ->
