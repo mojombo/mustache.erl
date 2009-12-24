@@ -25,11 +25,22 @@
 
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([compile/2, render/2, render/3, get/2, get/3, escape/1, start/1]).
+-export([compile/1, compile/2, render/2, render/3, get/2, get/3, escape/1, start/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
                  tag_re = undefined}).
+
+compile(Body) ->
+  State = #mstate{},
+  CompiledTemplate = pre_compile(Body, State),
+  % io:format("~p~n~n", [CompiledTemplate]),
+  % io:format(CompiledTemplate ++ "~n", []),
+  {ok, Tokens, _} = erl_scan:string(CompiledTemplate),
+  {ok, [Form]} = erl_parse:parse_exprs(Tokens),
+  Bindings = erl_eval:new_bindings(),
+  {value, Fun, _} = erl_eval:expr(Form, Bindings),
+  Fun.
 
 compile(Mod, File) ->
   code:purge(Mod),
@@ -46,6 +57,9 @@ compile(Mod, File) ->
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
   Fun.
 
+render(Body, Ctx) when is_list(Body) ->
+  TFun = compile(Body),
+  render(undefined, TFun, Ctx);
 render(Mod, File) when is_list(File) ->
   render(Mod, File, dict:new());
 render(Mod, CompiledTemplate) ->
