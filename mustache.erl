@@ -7,12 +7,14 @@
                  tag_re = undefined}).
 
 compile(Mod, File) ->
+  code:purge(Mod),
+  code:load_file(Mod),
   {ok, TemplateBin} = file:read_file(File),
   Template = re:replace(TemplateBin, "\"", "\\\\\"", [global, {return,list}]),
   State = #mstate{mod = Mod},
   CompiledTemplate = pre_compile(Template, State),
-  io:format("~p~n~n", [CompiledTemplate]),
-  io:format(CompiledTemplate ++ "~n", []),
+  % io:format("~p~n~n", [CompiledTemplate]),
+  % io:format(CompiledTemplate ++ "~n", []),
   {ok, Tokens, _} = erl_scan:string(CompiledTemplate),
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
   Form.
@@ -26,7 +28,6 @@ render(Mod, File, Ctx) when is_list(File) ->
   CompiledTemplate = compile(Mod, File),
   render(Mod, CompiledTemplate, Ctx);
 render(Mod, CompiledTemplate, Ctx) ->
-  code:load_file(Mod),
   Ctx2 = dict:store('__mod__', Mod, Ctx),
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(CompiledTemplate, Bindings),
@@ -67,7 +68,9 @@ compile_section(Name, Content, State) ->
       "false -> " ++
         "[]; " ++
       "List when is_list(List) -> " ++
-        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List] " ++
+        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; " ++
+      "Else -> " ++
+        "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
     "end " ++
   "end()".
 
@@ -112,15 +115,21 @@ get(Key, Ctx, Mod) when is_list(Key) ->
   get(list_to_atom(Key), Ctx, Mod);
 get(Key, Ctx, Mod) ->
   case dict:find(Key, Ctx) of
-    {ok, Val} -> to_s(Val);
+    {ok, Val} ->
+      io:format("From Ctx {~p, ~p}~n", [Key, Val]),
+      to_s(Val);
     error ->
       case erlang:function_exported(Mod, Key, 1) of
         true ->
-          to_s(apply(Mod, Key, [Ctx]));
+          Val = to_s(apply(Mod, Key, [Ctx])),
+          io:format("From Mod/1 {~p, ~p}~n", [Key, Val]),
+          Val;
         false ->
           case erlang:function_exported(Mod, Key, 0) of
             true ->
-              to_s(apply(Mod, Key, []));
+              Val = to_s(apply(Mod, Key, [])),
+              io:format("From Mod/0 {~p, ~p}~n", [Key, Val]),
+              Val;
             false ->
               []
           end
