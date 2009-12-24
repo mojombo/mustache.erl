@@ -25,7 +25,7 @@
 
 -module(mustache).  %% v0.1.0beta
 -author("Tom Preston-Werner").
--export([compile/1, compile/2, render/2, render/3, get/2, get/3, escape/1, start/1]).
+-export([compile/1, compile/2, render/1, render/2, render/3, get/2, get/3, escape/1, start/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
@@ -56,6 +56,11 @@ compile(Mod, File) ->
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
   Fun.
+
+render(Mod) ->
+  ModPath = code:which(Mod),
+  TemplatePath = re:replace(ModPath, "\.beam$", ".mustache", [{return, list}]),
+  render(Mod, TemplatePath).
 
 render(Body, Ctx) when is_list(Body) ->
   TFun = compile(Body),
@@ -203,6 +208,6 @@ escape([X | Rest], Acc) ->
 %%---------------------------------------------------------------------------
 
 start([T]) ->
-  Out = render(list_to_atom(T), "examples/" ++ T ++ ".mustache"),
+  Out = render(list_to_atom(T)),
   io:format(Out ++ "~n", []).
       
