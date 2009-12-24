@@ -1,6 +1,8 @@
 -module(bench).
 -export([run/0]).
 
+-define(COUNT, 500).
+
 run() ->
   Ctx0 = dict:from_list([{header, "Chris"}, {empty, false}, {list, true}]),
   A = dict:from_list([{name, "red"}, {current, true}, {url, "#Red"}]),
@@ -10,10 +12,10 @@ run() ->
   % Ctx1 = dict:new(),
   CT = mustache:compile(complex, "../examples/complex.mustache"),
   T0 = erlang:now(),
-  render(CT, Ctx1, 100),
+  render(CT, Ctx1, ?COUNT),
   T1 = erlang:now(),
   Diff = timer:now_diff(T1, T0),
-  Mean = Diff / 100,
+  Mean = Diff / ?COUNT,
   io:format("~nTotal time: ~.2fs~n", [Diff / 1000000]),
   io:format("Mean render time: ~.2fms~n", [Mean / 1000]).
 
@@ -23,5 +25,5 @@ render(CT, Ctx, N) ->
   Out = mustache:render(complex, CT, Ctx),
   % io:format(Out, []),
   158 = length(Out),
-  io:format(".", []),
+  % io:format(".", []),
   render(CT, Ctx, N - 1).
