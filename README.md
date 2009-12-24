@@ -7,6 +7,7 @@ file. Indeed, it is not even possible to embed logic in the template. This
 allows templates to be reused across language boundaries and for other
 language independent uses.
 
+
 Usage
 -----
 
@@ -130,3 +131,5 @@ Meta
 ----
 
 * Code: `git clone git://github.com/mojombo/mustache.erl.git`
+
+[1]: http://github.com/defunkt/mustache.git
