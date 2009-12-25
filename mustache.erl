@@ -23,7 +23,7 @@
 %% See the README at http://github.com/mojombo/mustache.erl for additional
 %% documentation and usage examples.
 
--module(mustache).  %% v0.1.0beta
+-module(mustache).  %% v0.1.0
 -author("Tom Preston-Werner").
 -export([compile/1, compile/2, render/1, render/2, render/3, get/2, get/3, escape/1, start/1]).
 
