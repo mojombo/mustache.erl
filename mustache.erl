@@ -31,7 +31,7 @@
                  section_re = undefined,
                  tag_re = undefined}).
 
-compile(Body) ->
+compile(Body) when is_list(Body) ->
   State = #mstate{},
   CompiledTemplate = pre_compile(Body, State),
   % io:format("~p~n~n", [CompiledTemplate]),
@@ -40,7 +40,10 @@ compile(Body) ->
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
-  Fun.
+  Fun;
+compile(Mod) ->
+  TemplatePath = template_path(Mod),
+  compile(Mod, TemplatePath).
 
 compile(Mod, File) ->
   code:purge(Mod),
@@ -58,8 +61,7 @@ compile(Mod, File) ->
   Fun.
 
 render(Mod) ->
-  ModPath = code:which(Mod),
-  TemplatePath = re:replace(ModPath, "\.beam$", ".mustache", [{return, list}]),
+  TemplatePath = template_path(Mod),
   render(Mod, TemplatePath).
 
 render(Body, Ctx) when is_list(Body) ->
@@ -147,6 +149,10 @@ compile_tag("{", Content, State) ->
   "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")";
 compile_tag("!", _Content, _State) ->
   "[]".
+
+template_path(Mod) ->
+  ModPath = code:which(Mod),
+  re:replace(ModPath, "\.beam$", ".mustache", [{return, list}]).
 
 get(Key, Ctx) when is_list(Key) ->
   {ok, Mod} = dict:find('__mod__', Ctx),
