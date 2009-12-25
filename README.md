@@ -15,6 +15,8 @@ are called and provide the data for the template tags. A context is an Erlang
 dict that contains the current context from which tags can pull data. A few
 examples will clarify how these items interact.
 
+NOTE: This is alpha software. Do not use it in production without extensive testing. The API may change at any time. It still lacks some of the features of Mustache for Ruby and the performance (even with compiled templates) is not yet where I'd like it to be.
+
 
 The Simplest Example
 --------------------
