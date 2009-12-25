@@ -70,7 +70,7 @@ The template file (simple.mustache) looks like so:
 Notice that the template references the functions in the view module. The
 return values from the view dictate how the template will be rendered. To get
 the HTML output, make sure the `simple.beam` bytecode file is in your code
-path and call the following code:
+path and call the following function:
 
     mustache:render(simple)
 
@@ -88,8 +88,8 @@ Compiled Templates (for speed)
 
 In order to boost performance for templates that will be called many times in
 the lifetime of a runtime, Mustache allows you to compile a template and then
-provide that to to the render function (instead of having to implicitly
-recompile the template on each call).
+provide that to the render function (instead of having to implicitly recompile
+the template on each call).
 
     1> TFun = mustache:compile(simple).
     2> mustache:render(simple, TFun).
@@ -184,9 +184,8 @@ For example, imagine this template:
 
 And this view code:
 
-    def repo
-      [dict:from_list([{name, Name}]) || Name <- ["Tom", "Chris", "PJ"]]
-    end
+    repo() ->
+      [dict:from_list([{name, Name}]) || Name <- ["Tom", "Chris", "PJ"]].
 
 When rendered, our view will contain a list of each of the names in the source
 list.
