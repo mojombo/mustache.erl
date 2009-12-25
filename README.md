@@ -7,11 +7,20 @@ file. Indeed, it is not even possible to embed logic in the template. This
 allows templates to be reused across language boundaries and for other
 language independent uses.
 
+Working with Mustache means dealing with templates, views, and contexts.
+Templates contain HTML (or some other format) and Mustache tags that specify
+what data to pull in. A template can be either a string or a file (usually
+ending in .mustache). Views are Erlang modules that can define functions that
+are called and provide the data for the template tags. A context is an Erlang
+dict that contains the current context from which tags can pull data. A few
+examples will clarify how these items interact.
 
-Usage
------
 
-Quick example via `erl` REPL (ensure mustache.erl is in your code path):
+The Simplest Example
+--------------------
+
+The simplest example involves using a string template and a context from the
+REPL. Make sure `mustache.beam` is in your code path.
 
     1> Ctx = dict:from_list([{planet, "World!"}]).
     {dict,1,16,16,8,80,48,...}
@@ -19,7 +28,15 @@ Quick example via `erl` REPL (ensure mustache.erl is in your code path):
     2> mustache:render("Hello {{planet}}", Ctx).
     "Hello World!"
 
-A real-world example consists of two files: the view and the template. The
+In line 1 we created a context that contains a value bound to the `planet`
+tag. In line 2 we render a string template by passing in the template and the
+context.
+
+
+Two-File Example
+----------------
+
+A more complex example consists of two files: the view and the template. The
 view (logic) file is an Erlang module (simple.erl):
 
     -module(simple).
@@ -37,11 +54,12 @@ view (logic) file is an Erlang module (simple.erl):
     in_ca() ->
       true.
 
-In the logic file we define functions that will be called by the template.
-Some functions reference others, some return values, some return only
-booleans.
+In the view we define functions that will be called by the template. The names
+of the functions correspond to the tag names that will be used in the
+template. Some functions reference others, some return values, and some return
+only booleans.
 
-The template file (simple.mustache):
+The template file (simple.mustache) looks like so:
 
     Hello {{name}}
     You have just won ${{value}}!
@@ -51,18 +69,75 @@ The template file (simple.mustache):
 
 Notice that the template references the functions in the view module. The
 return values from the view dictate how the template will be rendered. To get
-the HTML output, make sure the `simple` module is in your code path and call
-the following code:
+the HTML output, make sure the `simple.beam` bytecode file is in your code
+path and call the following code:
 
     mustache:render(simple)
 
-Which tells Mustache to use the `simple` view and to look for a template named
+This tells Mustache to use the `simple` view and to look for a template named
 `simple.mustache` in the same directory as the `simple.beam` bytecode file. If
 all goes well, it returns the rendered HTML:
 
     Hello Tom
     You have just won $10000!
     Well, $6000.00, after taxes.
+
+
+Compiled Templates (for speed)
+------------------------------
+
+In order to boost performance for templates that will be called many times in
+the lifetime of a runtime, Mustache allows you to compile a template and then
+provide that to to the render function (instead of having to implicitly
+recompile the template on each call).
+
+    1> TFun = mustache:compile(simple).
+    2> mustache:render(simple, TFun).
+
+Now, each call to render will use the compiled template (TFun) instead of
+compiling the template on its own.
+
+
+The Power of Context
+--------------------
+
+You will often want to provide additional data to your template and view. You
+can do this by passing in an initial context to the render function. During
+rendering, tag lookups always hit the context first before looking for a view
+function. In this way, the context can be used to override view functions.
+Using the same template and view as above, we can replace the name tag with
+different data by constructing a context and passing it to `render`:
+
+
+    1> Ctx = dict:from_list([{name, "Chris"}]).
+    1> TFun = mustache:compile(simple).
+    2> mustache:render(simple, TFun, Ctx).
+
+This will produce the following output:
+
+    Hello Chris
+    You have just won $10000!
+    Well, $6000.00, after taxes.
+
+The context is also accessible from view functions, making it easy to pass in
+initialization data. Consider a case where we want to pass in a user ID:
+
+    Ctx = dict:from_list([{id, 42}])
+
+View functions can get access to the context by accepting a single argument:
+
+    name(Ctx) ->
+      ...
+
+Now when this function is called, it will be handed the context. In order to
+fetch data from the context, use `mustache:get/2`:
+
+    name(Ctx) ->
+      Id = mustache:get(id, Ctx),
+      ...
+
+If the requested key does not exist in the context, the empty list `[]` will
+be returned.
 
 
 Tag Types
