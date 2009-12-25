@@ -7,6 +7,9 @@ file. Indeed, it is not even possible to embed logic in the template. This
 allows templates to be reused across language boundaries and for other
 language independent uses.
 
+This project uses [Semantic Versioning](http://semver.org) for release
+numbering.
+
 Working with Mustache means dealing with templates, views, and contexts.
 Templates contain HTML (or some other format) and Mustache tags that specify
 what data to pull in. A template can be either a string or a file (usually
@@ -15,7 +18,10 @@ are called and provide the data for the template tags. A context is an Erlang
 dict that contains the current context from which tags can pull data. A few
 examples will clarify how these items interact.
 
-NOTE: This is alpha software. Do not use it in production without extensive testing. The API may change at any time. It still lacks some of the features of Mustache for Ruby and the performance (even with compiled templates) is not yet where I'd like it to be.
+NOTE: This is alpha software. Do not use it in production without extensive
+testing. The API may change at any time. It still lacks some of the features
+of Mustache for Ruby and the performance (even with compiled templates) is not
+yet where I'd like it to be.
 
 
 The Simplest Example
@@ -201,6 +207,15 @@ Comments begin with a bang and are ignored. The following template:
 Will render as follows:
 
     <h1>Today.</h1>
+
+
+TODO
+----
+
+* Support partials
+* Organize into traditional Erlang package structure
+* Get a Makefile going
+* Learn some things from erlydtl (speed improvments, perhaps)
 
 
 Meta
