@@ -24,11 +24,22 @@ of Mustache for Ruby and the performance (even with compiled templates) is not
 yet where I'd like it to be.
 
 
+Installation
+------------
+
+To compile the code, navigate to the Mustache.erl project root and issue:
+
+    make
+
+This will produce a `mustache.beam` file in the `ebin` directory that must be
+included in the code path of projects that need it.
+
+
 The Simplest Example
 --------------------
 
 The simplest example involves using a string template and a context from the
-REPL. Make sure `mustache.beam` is in your code path.
+REPL.
 
     1> Ctx = dict:from_list([{planet, "World!"}]).
     {dict,1,16,16,8,80,48,...}
@@ -213,8 +224,6 @@ TODO
 ----
 
 * Support partials
-* Organize into traditional Erlang package structure
-* Get a Makefile going
 * Learn some things from erlydtl (speed improvments, perhaps)
 
 
