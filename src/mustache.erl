@@ -202,11 +202,11 @@ escape(HTML) ->
 
 escape([], Acc) ->
   lists:reverse(Acc);
-escape(["<" | Rest], Acc) ->
+escape([$< | Rest], Acc) ->
   escape(Rest, lists:reverse("&lt;", Acc));
-escape([">" | Rest], Acc) ->
+escape([$> | Rest], Acc) ->
   escape(Rest, lists:reverse("&gt;", Acc));
-escape(["&" | Rest], Acc) ->
+escape([$& | Rest], Acc) ->
   escape(Rest, lists:reverse("&amp;", Acc));
 escape([X | Rest], Acc) ->
   escape(Rest, [X | Acc]).
