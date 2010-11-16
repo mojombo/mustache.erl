@@ -30,7 +30,7 @@
 -vsn("0.2.0").
 -export([compile/1, compile/2, render/1, render/2, render/3, get/2, get/3, escape/1, start/1]).
 
--record(mstate, {mod = undefined, binmod = <<"undefined">>}).
+-record(mstate, {mod = undefined, binmod = <<"undefined">>, i=0}).
 
 compile(Body) when is_list(Body) ->
   State = #mstate{},
@@ -52,7 +52,7 @@ compile(Mod, File) ->
   {ok, TemplateBin} = file:read_file(File),
   State = #mstate{mod = Mod, binmod = atom_to_binary(Mod,utf8)},
   CompiledTemplate = pre_compile(TemplateBin, State),
-  % io:format("~p~n~n", [CompiledTemplate]),
+  % io:format("~s~n~n", [CompiledTemplate]),
   % io:format("File: ~p" ++ CompiledTemplate ++ "~n", [File]),
   {ok, Tokens, _} = erl_scan:string(CompiledTemplate),
   {ok, [Form]} = erl_parse:parse_exprs(Tokens),
@@ -148,6 +148,7 @@ maybe_tag(<<$//utf8,R/binary>>, <<>>, [Content|[_StartTag|[SoFar|Stack]]], State
   {R2,Tag} = tag_name(R),
   %% TODO: compare Tag and StartTag to provide a nice debug msg
   BinMod = State#mstate.binmod,
+  {Var,State2} = var(State),
   Compiled = <<"\" ++ fun() -> ",
     "case mustache:get('",Tag/binary,"', Ctx, ",BinMod/binary,") of ",
       "true -> ",
@@ -156,13 +157,13 @@ maybe_tag(<<$//utf8,R/binary>>, <<>>, [Content|[_StartTag|[SoFar|Stack]]], State
         "[];",
       "false -> ",
         "[];",
-      "List when is_list(List) -> ",
-        "[fun(Ctx) -> \"",Content/binary,"\" end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; ",
+      Var/binary," when is_list(",Var/binary,") -> ",
+        "[fun(Ctx) -> \"",Content/binary,"\" end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- ",Var/binary,"]; ",
       "_ -> ",
-        "throw({template, io_lib:format(\"Bad context for ~p\", ['",Tag/binary,"'])}) ",
+        "throw({template, io_lib:format(\"Bad context for ~p~n\", ['",Tag/binary,"'])}) ",
     "end ",
   "end() ++ \"">>,
-  compiler(R2, <<SoFar/binary,Compiled/binary>>, Stack, State);
+  compiler(R2, <<SoFar/binary,Compiled/binary>>, Stack, State2);
 maybe_tag(<<$!/utf8,R/binary>>, <<>>, [SoFar|Stack], State) ->
   comment(R, SoFar, Stack, State);
 maybe_tag(<<${/utf8,R/binary>>, <<>>, [SoFar|Stack], State) ->
@@ -186,6 +187,16 @@ tag_name(<<" "/utf8,R/binary>>, Name) ->
 tag_name(<<C/utf8,R/binary>>, Name) ->
   tag_name(R, <<Name/binary,C/utf8>>).
 
+%% due to all our fun()s being nested we can't use the some name for all variables
+%% used within them, so we have to keep a counter "i" in our state to allocate
+%% variable names. e.g. Var0, Var1, Var2, and so on
+var(State) ->
+  var("Var", State).
+var(Name, #mstate{i=I}=State) ->
+  S = list_to_binary(integer_to_list(I)),
+  BName = list_to_binary(Name),
+  {<<BName/binary,S/binary>>, State#mstate{i=I+1}}.
+  
 template_path(Mod) ->
   ModPath = code:which(Mod),
   re:replace(ModPath, "\.beam$", ".mustache", [{return, list}]).
