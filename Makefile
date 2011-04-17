@@ -5,3 +5,8 @@ all: compile
 
 compile:
 	@./rebar compile
+
+test:
+	@./rebar eunit
+
+.PHONY: test
