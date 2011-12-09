@@ -1,4 +1,4 @@
-Mustache for Erlang
+Mustache for Erlang [![Build Status](https://secure.travis-ci.org/mojombo/mustache.erl.png)](http://travis-ci.org/#!/mojombo/mustache.erl)
 ===================
 
 An Erlang port of [Mustache for Ruby][1]. Mustache is a framework-agnostic
