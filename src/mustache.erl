@@ -113,9 +113,9 @@ compile_section(Name, Content, State) ->
   Result = compiler(Content, State),
   "fun() -> " ++
     "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
-      "true -> " ++
+      "\"true\" -> " ++
         Result ++ "; " ++
-      "false -> " ++
+      "\"false\" -> " ++
         "[]; " ++
       "List when is_list(List) -> " ++
         "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; " ++
