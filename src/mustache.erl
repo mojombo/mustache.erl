@@ -90,7 +90,7 @@ pre_compile(T, State) ->
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
   "fun(Ctx) -> " ++
-    "CFun = fun(A, B) -> A end, " ++
+    "CFun = fun(_Key, A, B) -> A end, " ++
     compiler(T, State2) ++ " end.".
 
 compiler(T, State) ->
