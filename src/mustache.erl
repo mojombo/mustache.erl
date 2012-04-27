@@ -117,10 +117,8 @@ compile_section(Name, Content, State) ->
         Result ++ "; " ++
       "false -> " ++
         "[]; " ++
-      "List when is_list(List) -> " ++
-        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; " ++
-      "Else -> " ++
-        "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
+       "_ -> " ++
+        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")] " ++
     "end " ++
   "end()".
 
