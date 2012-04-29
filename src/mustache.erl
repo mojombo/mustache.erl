@@ -155,9 +155,14 @@ compile_tag("!", _Content, _State) ->
   "[]".
 
 template_dir(Mod) ->
+  DefaultDirPath = filename:dirname(code:which(Mod)),
   case application:get_env(mustache, templates_dir) of
-    {ok, DirPath} -> DirPath;
-    _             -> filename:dirname(code:which(Mod))
+    {ok, DirPath} when is_list(DirPath) ->
+      CorrectDir = filelib:ensure_dir(DirPath) == ok,
+      if CorrectDir -> DirPath;
+         true       -> DefaultDirPath end;
+    _ ->
+      DefaultDirPath
   end.
 template_path(Mod) ->
   DirPath = template_dir(Mod),
