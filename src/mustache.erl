@@ -158,9 +158,10 @@ template_dir(Mod) ->
   DefaultDirPath = filename:dirname(code:which(Mod)),
   case application:get_env(mustache, templates_dir) of
     {ok, DirPath} when is_list(DirPath) ->
-      CorrectDir = filelib:ensure_dir(DirPath) == ok,
-      if CorrectDir -> DirPath;
-         true       -> DefaultDirPath end;
+      case filelib:ensure_dir(DirPath) of
+        ok -> DirPath;
+        _  -> DefaultDirPath
+      end;
     _ ->
       DefaultDirPath
   end.
