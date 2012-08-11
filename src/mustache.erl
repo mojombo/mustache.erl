@@ -86,7 +86,7 @@ pre_compile(T, State) ->
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
   "fun(Ctx) -> " ++
-    "CFun = fun(A, B) -> A end, " ++
+    "CFun = fun(_Key, A, B) -> A end, " ++
     compiler(T, State2) ++ " end.".
 
 compiler(T, State) ->
@@ -113,10 +113,8 @@ compile_section(Name, Content, State) ->
         Result ++ "; " ++
       "\"false\" -> " ++
         "[]; " ++
-      "List when is_list(List) -> " ++
-        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; " ++
-      "Else -> " ++
-        "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
+       "_ -> " ++
+        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")] " ++
     "end " ++
   "end()".
 
