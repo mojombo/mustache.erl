@@ -150,9 +150,21 @@ compile_tag("{", Content, State) ->
 compile_tag("!", _Content, _State) ->
   "[]".
 
+template_dir(Mod) ->
+  DefaultDirPath = filename:dirname(code:which(Mod)),
+  case application:get_env(mustache, templates_dir) of
+    {ok, DirPath} when is_list(DirPath) ->
+      case filelib:ensure_dir(DirPath) of
+        ok -> DirPath;
+        _  -> DefaultDirPath
+      end;
+    _ ->
+      DefaultDirPath
+  end.
 template_path(Mod) ->
-  ModPath = code:which(Mod),
-  re:replace(ModPath, "\.beam$", ".mustache", [{return, list}]).
+  DirPath = template_dir(Mod),
+  Basename = atom_to_list(Mod),
+  filename:join(DirPath, Basename ++ ".mustache").
 
 get(Key, Ctx) when is_list(Key) ->
   {ok, Mod} = dict:find('__mod__', Ctx),
