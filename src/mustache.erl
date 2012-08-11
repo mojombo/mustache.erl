@@ -31,10 +31,6 @@
                  section_re = undefined,
                  tag_re = undefined}).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 compile(Body) when is_list(Body) ->
   State = #mstate{},
   CompiledTemplate = pre_compile(Body, State),
@@ -218,17 +214,3 @@ escape([X | Rest], Acc) ->
 start([T]) ->
   Out = render(list_to_atom(T)),
   io:format(Out ++ "~n", []).
-
--ifdef(TEST).
-
-simple_test() ->
-    Ctx = dict:from_list([{name, "world"}]),
-    Result = render("Hello {{name}}!", Ctx),
-    ?assertEqual("Hello world!", Result).
-
-integer_values_too_test() ->
-    Ctx = dict:from_list([{name, "Chris"}, {value, 10000}]),
-    Result = render("Hello {{name}}~nYou have just won ${{value}}!", Ctx),
-    ?assertEqual("Hello Chris~nYou have just won $10000!", Result).
-
--endif.
