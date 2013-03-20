@@ -129,11 +129,11 @@ compile_tags(T, State) ->
       Content = string:substr(T, C0 + 1, C1),
       Kind = tag_kind(T, K),
       Result = compile_tag(Kind, Content, State),
-      "[\"" ++ Front ++
+      "[\"" ++ escape_special(Front) ++
         "\" | [" ++ Result ++
         " | " ++ compile_tags(Back, State) ++ "]]";
     nomatch ->
-      "[\"" ++ T ++ "\"]"
+      "[\"" ++ escape_special(T) ++ "\"]"
   end.
 
 tag_kind(_T, {-1, 0}) ->
@@ -220,6 +220,19 @@ escape(["&" | Rest], Acc) ->
   escape(Rest, lists:reverse("&amp;", Acc));
 escape([X | Rest], Acc) ->
   escape(Rest, [X | Acc]).
+
+escape_special(String) ->
+    lists:flatten([escape_char(Char) || Char <- String]).
+
+escape_char($\0) -> "\\0";
+escape_char($\n) -> "\\n";
+escape_char($\t) -> "\\t";
+escape_char($\b) -> "\\b";
+escape_char($\r) -> "\\r";
+escape_char($')  -> "\\'";
+escape_char($")  -> "\\\"";
+escape_char($\\) -> "\\\\";
+escape_char(Char) -> Char.
 
 %%---------------------------------------------------------------------------
 
