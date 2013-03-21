@@ -38,3 +38,8 @@ integer_values_too_test() ->
     Ctx = dict:from_list([{name, "Chris"}, {value, 10000}]),
     Result = mustache:render("Hello {{name}}~nYou have just won ${{value}}!", Ctx),
     ?assertEqual("Hello Chris~nYou have just won $10000!", Result).
+
+specials_test() ->
+    Ctx = dict:from_list([{name, "Chris"}, {value, 10000}]),
+    Result = mustache:render("\'Hello\n\"{{name}}\"~nYou \"have\" ju\0st\\ won\b\r\"${{value}}!\"\t", Ctx),
+    ?assertEqual("\'Hello\n\"Chris\"~nYou \"have\" ju\0st\\ won\b\r\"$10000!\"\t", Result).
