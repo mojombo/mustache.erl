@@ -82,7 +82,7 @@ render(Mod, CompiledTemplate, Ctx) ->
 pre_compile(T, State) ->
   SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
   {ok, CompiledSectionRE} = re:compile(SectionRE, [dotall]),
-  TagRE = "\{\{(#|=|!|<|>|\{)?(.+?)\\1?\}\}+",
+  TagRE = "\{\{(#|=|!|<|>|\{|&)?(.+?)\\1?\}\}+",
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
   "fun(Ctx) -> " ++
@@ -142,13 +142,21 @@ tag_kind(T, {K0, K1}) ->
   string:substr(T, K0 + 1, K1).
 
 compile_tag(none, Content, State) ->
-  Mod = State#mstate.mod,
-  "mustache:escape(mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))";
+  compile_escaped_tag(Content, State);
+compile_tag("&", Content, State) ->
+  compile_unescaped_tag(Content, State);
 compile_tag("{", Content, State) ->
-  Mod = State#mstate.mod,
-  "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")";
+  compile_unescaped_tag(Content, State);
 compile_tag("!", _Content, _State) ->
   "[]".
+
+compile_escaped_tag(Content, State) ->
+  Mod = State#mstate.mod,
+  "mustache:escape(mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
+
+compile_unescaped_tag(Content, State) ->
+  Mod = State#mstate.mod,
+  "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
 
 template_dir(Mod) ->
   DefaultDirPath = filename:dirname(code:which(Mod)),
