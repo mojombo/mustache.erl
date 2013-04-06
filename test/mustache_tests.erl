@@ -49,28 +49,45 @@ specials_test() ->
 %% ===================================================================
 
 tag_type_variable_empty_test() ->
-    variable_test_helper("{{name}}", "", []).
+    test_helper("{{name}}", "", []).
 
 tag_type_variable_string_test() ->
-    variable_test_helper("{{name}}", "NAME", [{name, "NAME"}]).
+    test_helper("{{name}}", "NAME", [{name, "NAME"}]).
 
 tag_type_variable_integer_test() ->
-    variable_test_helper("{{name}}", "1", [{name, 1}]).
+    test_helper("{{name}}", "1", [{name, 1}]).
 
 tag_type_variable_atom_test() ->
-    variable_test_helper("{{name}}", "atom", [{name, atom}]).
+    test_helper("{{name}}", "atom", [{name, atom}]).
 
 tag_type_varibale_escaped_test() ->
-    variable_test_helper("{{name}}", "&gt;&amp;do&lt;it&gt;", [{name, ">&do<it>"}]).
+    test_helper("{{name}}", "&gt;&amp;do&lt;it&gt;", [{name, ">&do<it>"}]).
 
 tag_type_variabel_unescaped_test() ->
-    variable_test_helper("{{{name}}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
+    test_helper("{{{name}}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
 
 tag_type_variable_unescaped_with_ampersand_test() ->
-    variable_test_helper("{{&name}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
+    test_helper("{{&name}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
 
 
-variable_test_helper(Template, Expected, CtxList) ->
+tag_type_section_empty_test() ->
+    test_helper("{{#name}}section{{/name}}", "", []).
+
+tag_type_section_false_test() ->
+    test_helper("{{#name}}section{{/name}}", "", [{name, false}]).
+
+tag_type_section_true_test() ->
+    test_helper("{{#name}}section{{/name}}", "section", [{name, true}]).
+
+tag_type_section_empty_list_test() ->
+    test_helper("{{#name}}section{{/name}}", "", [{name, []}]).
+
+tag_type_section_nonempty_list_test() ->
+    CtxList = [{name, [ dict:new() || _ <- lists:seq(1,3) ]}],
+    test_helper("{{#name}}section{{/name}}", "sectionsectionsection", CtxList).
+
+
+test_helper(Template, Expected, CtxList) ->
     Ctx = dict:from_list(CtxList),
     ?assertEqual(Expected, mustache:render(Template, Ctx)).
 
