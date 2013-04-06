@@ -104,6 +104,16 @@ tag_type_inverted_section_nonempty_list_test() ->
     test_helper("{{^name}}section{{/name}}", "", CtxList).
 
 
+tag_type_comment_test() ->
+    test_helper("{{!comment}}", "", []).
+
+tag_type_comment_empty_test() ->
+    test_helper("{{! }}", "", []).
+
+tag_type_comment_multiline_test() ->
+    test_helper("{{!\ncomment\ncomment\ncomment\n\n}}", "", []).
+
+
 test_helper(Template, Expected, CtxList) ->
     Ctx = dict:from_list(CtxList),
     ?assertEqual(Expected, mustache:render(Template, Ctx)).
