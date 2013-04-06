@@ -80,7 +80,7 @@ render(Mod, CompiledTemplate, Ctx) ->
   lists:flatten(CompiledTemplate(Ctx2)).
 
 pre_compile(T, State) ->
-  SectionRE = "\{\{\#([^\}]*)}}\s*(.+?){{\/\\1\}\}\s*",
+  SectionRE = "\{\{(\#|\\^)([^\}]*)}}\s*(.+?){{\/\\2\}\}\s*",
   {ok, CompiledSectionRE} = re:compile(SectionRE, [dotall]),
   TagRE = "\{\{(#|=|!|<|>|\{|&)?(.+?)\\1?\}\}+",
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
@@ -92,31 +92,40 @@ pre_compile(T, State) ->
 compiler(T, State) ->
   Res = re:run(T, State#mstate.section_re),
   case Res of
-    {match, [{M0, M1}, {N0, N1}, {C0, C1}]} ->
+    {match, [{M0, M1}, {K0, K1}, {N0, N1}, {C0, C1}]} ->
       Front = string:substr(T, 1, M0),
       Back = string:substr(T, M0 + M1 + 1),
+      Kind = string:substr(T, K0 + 1, K1),
       Name = string:substr(T, N0 + 1, N1),
       Content = string:substr(T, C0 + 1, C1),
       "[" ++ compile_tags(Front, State) ++
-        " | [" ++ compile_section(Name, Content, State) ++
+        " | [" ++ compile_section(Kind, Name, Content, State) ++
         " | [" ++ compiler(Back, State) ++ "]]]";
     nomatch ->
       compile_tags(T, State)
   end.
 
-compile_section(Name, Content, State) ->
+compile_section("#", Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compiler(Content, State),
   "fun() -> " ++
     "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
-      "\"true\" -> " ++
-        Result ++ "; " ++
-      "\"false\" -> " ++
-        "[]; " ++
+      "\"true\" -> " ++ Result ++ "; " ++
+      "\"false\" -> []; " ++
       "List when is_list(List) -> " ++
         "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; " ++
       "Else -> " ++
         "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
+    "end " ++
+  "end()";
+compile_section("^", Name, Content, State) ->
+  Mod = State#mstate.mod,
+  Result = compiler(Content, State),
+  "fun() -> " ++
+    "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+      "\"false\" -> " ++ Result ++ "; " ++
+      "[] -> " ++ Result ++ "; " ++
+      "_ -> [] "
     "end " ++
   "end()".
 
