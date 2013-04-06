@@ -43,3 +43,34 @@ specials_test() ->
     Ctx = dict:from_list([{name, "Chris"}, {value, 10000}]),
     Result = mustache:render("\'Hello\n\"{{name}}\"~nYou \"have\" ju\0st\\ won\b\r\"${{value}}!\"\t", Ctx),
     ?assertEqual("\'Hello\n\"Chris\"~nYou \"have\" ju\0st\\ won\b\r\"$10000!\"\t", Result).
+
+%% ===================================================================
+%% basic tag types
+%% ===================================================================
+
+tag_type_variable_empty_test() ->
+    variable_test_helper("{{name}}", "", []).
+
+tag_type_variable_string_test() ->
+    variable_test_helper("{{name}}", "NAME", [{name, "NAME"}]).
+
+tag_type_variable_integer_test() ->
+    variable_test_helper("{{name}}", "1", [{name, 1}]).
+
+tag_type_variable_atom_test() ->
+    variable_test_helper("{{name}}", "atom", [{name, atom}]).
+
+tag_type_varibale_escaped_test() ->
+    variable_test_helper("{{name}}", "&gt;&amp;do&lt;it&gt;", [{name, ">&do<it>"}]).
+
+tag_type_variabel_unescaped_test() ->
+    variable_test_helper("{{{name}}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
+
+tag_type_variable_unescaped_with_ampersand_test() ->
+    variable_test_helper("{{&name}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
+
+
+variable_test_helper(Template, Expected, CtxList) ->
+    Ctx = dict:from_list(CtxList),
+    ?assertEqual(Expected, mustache:render(Template, Ctx)).
+
