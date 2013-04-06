@@ -43,3 +43,78 @@ specials_test() ->
     Ctx = dict:from_list([{name, "Chris"}, {value, 10000}]),
     Result = mustache:render("\'Hello\n\"{{name}}\"~nYou \"have\" ju\0st\\ won\b\r\"${{value}}!\"\t", Ctx),
     ?assertEqual("\'Hello\n\"Chris\"~nYou \"have\" ju\0st\\ won\b\r\"$10000!\"\t", Result).
+
+%% ===================================================================
+%% basic tag types
+%% ===================================================================
+
+tag_type_variable_empty_test() ->
+    test_helper("{{name}}", "", []).
+
+tag_type_variable_string_test() ->
+    test_helper("{{name}}", "NAME", [{name, "NAME"}]).
+
+tag_type_variable_integer_test() ->
+    test_helper("{{name}}", "1", [{name, 1}]).
+
+tag_type_variable_atom_test() ->
+    test_helper("{{name}}", "atom", [{name, atom}]).
+
+tag_type_varibale_escaped_test() ->
+    test_helper("{{name}}", "&gt;&amp;do&lt;it&gt;", [{name, ">&do<it>"}]).
+
+tag_type_variabel_unescaped_test() ->
+    test_helper("{{{name}}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
+
+tag_type_variable_unescaped_with_ampersand_test() ->
+    test_helper("{{&name}}", ">dont&do<it>", [{name, ">dont&do<it>"}]).
+
+
+tag_type_section_empty_test() ->
+    test_helper("{{#name}}section{{/name}}", "", []).
+
+tag_type_section_false_test() ->
+    test_helper("{{#name}}section{{/name}}", "", [{name, false}]).
+
+tag_type_section_true_test() ->
+    test_helper("{{#name}}section{{/name}}", "section", [{name, true}]).
+
+tag_type_section_empty_list_test() ->
+    test_helper("{{#name}}section{{/name}}", "", [{name, []}]).
+
+tag_type_section_nonempty_list_test() ->
+    CtxList = [{name, [ dict:new() || _ <- lists:seq(1,3) ]}],
+    test_helper("{{#name}}section{{/name}}", "sectionsectionsection", CtxList).
+
+
+tag_type_inverted_section_empty_test() ->
+    test_helper("{{^name}}section{{/name}}", "section", []).
+
+tag_type_inverted_section_false_test() ->
+    test_helper("{{^name}}section{{/name}}", "section", [{name, false}]).
+
+tag_type_inverted_section_true_test() ->
+    test_helper("{{^name}}section{{/name}}", "", [{name, true}]).
+
+tag_type_inverted_section_empty_list_test() ->
+    test_helper("{{^name}}section{{/name}}", "section", [{name, []}]).
+
+tag_type_inverted_section_nonempty_list_test() ->
+    CtxList = [{name, [ dict:new() || _ <- lists:seq(1,3) ]}],
+    test_helper("{{^name}}section{{/name}}", "", CtxList).
+
+
+tag_type_comment_test() ->
+    test_helper("{{!comment}}", "", []).
+
+tag_type_comment_empty_test() ->
+    test_helper("{{! }}", "", []).
+
+tag_type_comment_multiline_test() ->
+    test_helper("{{!\ncomment\ncomment\ncomment\n\n}}", "", []).
+
+
+test_helper(Template, Expected, CtxList) ->
+    Ctx = dict:from_list(CtxList),
+    ?assertEqual(Expected, mustache:render(Template, Ctx)).
+
