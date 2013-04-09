@@ -1,12 +1,18 @@
-ERL          ?= erl
-EBIN_DIRS    := $(wildcard deps/*/ebin)
+ERL ?= erl
+EBIN_DEPS_DIRS := $(wildcard deps/*/ebin)
 
-all: compile
+all: deps compile
 
 compile:
 	@./rebar compile
 
 test:
-	@./rebar eunit
+	@./rebar eunit skip_deps=true
+
+deps:
+	@./rebar get-deps
+
+run:
+	@$(ERL) -pa ebin/ -pa $(EBIN_DEPS_DIRS)
 
 .PHONY: test

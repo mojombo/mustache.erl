@@ -2,3 +2,4 @@
 *.dump
 ebin
 .eunit
+deps/
