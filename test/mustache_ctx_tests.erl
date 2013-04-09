@@ -21,10 +21,9 @@ new_ctx_from_dict_test() ->
     CtxFromDict = mustache_ctx:new(Dict),
     ?assertEqual(CtxFromList, CtxFromDict).
 
-new_ctx_from_improper_proplist_test() ->
-    ?assertExit(_, mustache_ctx:new([{k,v}, other])).
-
 new_ctx_from_improper_data_test() ->
+    ?assertExit(_, mustache_ctx:new([{k,v}, other])),
+    ?assertExit(_, mustache_ctx:new({other, tuple})),
     ?assertExit(_, mustache_ctx:new(other)).
 
 module_not_set_test() ->
