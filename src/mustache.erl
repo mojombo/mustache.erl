@@ -68,16 +68,17 @@ render(Body, Ctx) when is_list(Body) ->
   TFun = compile(Body),
   render(undefined, TFun, Ctx);
 render(Mod, File) when is_list(File) ->
-  render(Mod, File, dict:new());
+  render(Mod, File, []);
 render(Mod, CompiledTemplate) ->
-  render(Mod, CompiledTemplate, dict:new()).
+  render(Mod, CompiledTemplate, []).
 
 render(Mod, File, Ctx) when is_list(File) ->
   CompiledTemplate = compile(Mod, File),
   render(Mod, CompiledTemplate, Ctx);
-render(Mod, CompiledTemplate, Ctx) ->
-  Ctx2 = dict:store('__mod__', Mod, Ctx),
-  lists:flatten(CompiledTemplate(Ctx2)).
+render(Mod, CompiledTemplate, CtxData) ->
+  Ctx0 = mustache_ctx:new(CtxData),
+  Ctx1 = mustache_ctx:module(Mod, Ctx0),
+  lists:flatten(CompiledTemplate(Ctx1)).
 
 pre_compile(T, State) ->
   SectionRE = "\{\{(\#|\\^)([^\}]*)}}\s*(.+?){{\/\\2\}\}\s*",
@@ -86,7 +87,6 @@ pre_compile(T, State) ->
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
   "fun(Ctx) -> " ++
-    "CFun = fun(A, B) -> A end, " ++
     compiler(T, State2) ++ " end.".
 
 compiler(T, State) ->
@@ -113,7 +113,7 @@ compile_section("#", Name, Content, State) ->
       "\"true\" -> " ++ Result ++ "; " ++
       "\"false\" -> []; " ++
       "List when is_list(List) -> " ++
-        "[fun(Ctx) -> " ++ Result ++ " end(dict:merge(CFun, SubCtx, Ctx)) || SubCtx <- List]; " ++
+        "[fun(Ctx) -> " ++ Result ++ " end(mustache_ctx:merge(SubCtx, Ctx)) || SubCtx <- List]; " ++
       "Else -> " ++
         "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
     "end " ++
@@ -183,37 +183,17 @@ template_path(Mod) ->
   Basename = atom_to_list(Mod),
   filename:join(DirPath, Basename ++ ".mustache").
 
-get(Key, Ctx) when is_list(Key) ->
-  {ok, Mod} = dict:find('__mod__', Ctx),
-  get(list_to_atom(Key), Ctx, Mod);
-get(Key, Ctx) ->
-  {ok, Mod} = dict:find('__mod__', Ctx),
-  get(Key, Ctx, Mod).
-
-get(Key, Ctx, Mod) when is_list(Key) ->
-  get(list_to_atom(Key), Ctx, Mod);
 get(Key, Ctx, Mod) ->
-  case dict:find(Key, Ctx) of
-    {ok, Val} ->
-      % io:format("From Ctx {~p, ~p}~n", [Key, Val]),
-      to_s(Val);
-    error ->
-      case erlang:function_exported(Mod, Key, 1) of
-        true ->
-          Val = to_s(Mod:Key(Ctx)),
-          % io:format("From Mod/1 {~p, ~p}~n", [Key, Val]),
-          Val;
-        false ->
-          case erlang:function_exported(Mod, Key, 0) of
-            true ->
-              Val = to_s(Mod:Key()),
-              % io:format("From Mod/0 {~p, ~p}~n", [Key, Val]),
-              Val;
-            false ->
-              []
-          end
-      end
+  get(Key, mustache_ctx:module(Mod, Ctx)).
+
+get(Key, Ctx) when is_list(Key) ->
+  get(list_to_atom(Key), Ctx);
+get(Key, Ctx) ->
+  case mustache_ctx:get(Key, Ctx) of
+    {ok, Value} -> to_s(Value);
+    {error, _} -> []
   end.
+
 
 to_s(Val) when is_integer(Val) ->
   integer_to_list(Val);
