@@ -2,14 +2,23 @@
 -compile(export_all).
 
 -define(MODULE_KEY, '__mod__').
+-define(NEW_EXIT(Data), exit({improper_ctx, Data})).
+
 
 new() -> new([]).
 
-new(Proplist) ->
-    try dict:from_list(Proplist)
+new(List) when is_list(List) ->
+    try dict:from_list(List)
     catch
-        _:_ -> exit({improper_ctx, Proplist})
-    end.
+        _:_ -> ?NEW_EXIT(List)
+    end;
+new(Data) when is_tuple(Data) ->
+    case erlang:element(1, Data) of
+        dict -> Data;
+        _ -> ?NEW_EXIT(Data)
+    end;
+new(Data) ->
+    ?NEW_EXIT(Data).
 
 to_list(Ctx) ->
     List = dict:to_list(Ctx),

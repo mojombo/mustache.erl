@@ -14,8 +14,18 @@ new_ctx_from_proplist_test() ->
     CtxList = mustache_ctx:to_list(Ctx),
     ?assertEqual(List, CtxList).
 
+new_ctx_from_dict_test() ->
+    List = [{k,v}],
+    Dict = dict:from_list(List),
+    CtxFromList = mustache_ctx:new(List),
+    CtxFromDict = mustache_ctx:new(Dict),
+    ?assertEqual(CtxFromList, CtxFromDict).
+
 new_ctx_from_improper_proplist_test() ->
     ?assertExit(_, mustache_ctx:new([{k,v}, other])).
+
+new_ctx_from_improper_data_test() ->
+    ?assertExit(_, mustache_ctx:new(other)).
 
 module_not_set_test() ->
     Ctx = mustache_ctx:new(),
