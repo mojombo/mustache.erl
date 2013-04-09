@@ -24,3 +24,29 @@ module(Ctx) ->
 module(Module, Ctx) ->
     dict:store(?MODULE_KEY, Module, Ctx).
 
+get(Key, Ctx) ->
+    case dict:find(Key, Ctx) of
+        {ok, Value} -> {ok, Value};
+        error ->
+            get_from_module(Key, Ctx)
+    end.
+
+get_from_module(Key, Ctx) ->
+    FunList = case module(Ctx) of
+        {error, _} -> [];
+        {ok, Module} -> [
+                fun() -> Module:Key(Ctx) end,
+                fun() -> Module:Key() end
+            ]
+    end,
+    get_from_module(FunList).
+
+get_from_module([]) -> {error, not_found};
+get_from_module([ Fun | Rest ]) ->
+    try Value = Fun(),
+        {ok, Value}
+    catch
+        _:_ ->
+        get_from_module(Rest)
+    end.
+
