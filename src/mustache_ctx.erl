@@ -59,3 +59,6 @@ get_from_module([ Fun | Rest ]) ->
         get_from_module(Rest)
     end.
 
+merge(Ctx1, Ctx2) ->
+    dict:merge(fun(_, Value1, _) -> Value1 end, Ctx1, Ctx2).
+

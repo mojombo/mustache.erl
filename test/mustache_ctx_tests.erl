@@ -90,3 +90,18 @@ get_from_module_call_order_() ->
     Ctx1 = mustache_ctx:module(mock_module, Ctx0),
     ?assertEqual({ok, value_1}, mustache_ctx:get(key, Ctx1)).
 
+merge_disjoin_test() ->
+    Ctx1 = mustache_ctx:new([{k1,v1}]),
+    Ctx2 = mustache_ctx:new([{k2,v2}]),
+    Ctx = mustache_ctx:merge(Ctx1, Ctx2),
+    ?assertEqual({ok, v1}, mustache_ctx:get(k1, Ctx)),
+    ?assertEqual({ok, v2}, mustache_ctx:get(k2, Ctx)).
+
+merge_intersecting_test() ->
+    Ctx1 = mustache_ctx:new([{k0, v1}, {k1,v1}]),
+    Ctx2 = mustache_ctx:new([{k0, v2}, {k2,v2}]),
+    Ctx = mustache_ctx:merge(Ctx1, Ctx2),
+    ?assertEqual({ok, v1}, mustache_ctx:get(k0, Ctx)),
+    ?assertEqual({ok, v1}, mustache_ctx:get(k1, Ctx)),
+    ?assertEqual({ok, v2}, mustache_ctx:get(k2, Ctx)).
+
