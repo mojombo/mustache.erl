@@ -81,9 +81,9 @@ render(Mod, CompiledTemplate, CtxData) ->
   lists:flatten(CompiledTemplate(Ctx1)).
 
 pre_compile(T, State) ->
-  SectionRE = "\{\{(\#|\\^)([^\}]*)}}\s*(.+?){{\/\\2\}\}\s*",
+  SectionRE = "{{(#|\\^)([^}]*)}}\\s*(.+?){{/\\2}}\\s*",
   {ok, CompiledSectionRE} = re:compile(SectionRE, [dotall]),
-  TagRE = "\{\{(#|=|!|<|>|\{|&)?(.+?)\\1?\}\}+",
+  TagRE = "{{(#|=|!|<|>|{|&)?(.+?)\\1?}}+",
   {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
   State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
   "fun(Ctx) -> " ++
