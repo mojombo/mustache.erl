@@ -31,6 +31,10 @@
                  section_re = undefined,
                  tag_re = undefined}).
 
+-define(MUSTACHE_CTX, mustache_ctx).
+-define(MUSTACHE_CTX_STR, "mustache_ctx").
+-define(MUSTACHE_STR, "mustache").
+
 compile(Body) when is_list(Body) ->
   State = #mstate{},
   CompiledTemplate = pre_compile(Body, State),
@@ -76,8 +80,8 @@ render(Mod, File, Ctx) when is_list(File) ->
   CompiledTemplate = compile(Mod, File),
   render(Mod, CompiledTemplate, Ctx);
 render(Mod, CompiledTemplate, CtxData) ->
-  Ctx0 = mustache_ctx:new(CtxData),
-  Ctx1 = mustache_ctx:module(Mod, Ctx0),
+  Ctx0 = ?MUSTACHE_CTX:new(CtxData),
+  Ctx1 = ?MUSTACHE_CTX:module(Mod, Ctx0),
   lists:flatten(CompiledTemplate(Ctx1)).
 
 pre_compile(T, State) ->
@@ -109,11 +113,11 @@ compile_section("#", Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"true\" -> " ++ Result ++ "; " ++
       "\"false\" -> []; " ++
       "List when is_list(List) -> " ++
-        "[fun(Ctx) -> " ++ Result ++ " end(mustache_ctx:merge(SubCtx, Ctx)) || SubCtx <- List]; " ++
+        "[fun(Ctx) -> " ++ Result ++ " end(" ++ ?MUSTACHE_CTX_STR ++ ":merge(SubCtx, Ctx)) || SubCtx <- List]; " ++
       "Else -> " ++
         "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
     "end " ++
@@ -122,7 +126,7 @@ compile_section("^", Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case mustache:get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"false\" -> " ++ Result ++ "; " ++
       "[] -> " ++ Result ++ "; " ++
       "_ -> [] "
@@ -161,11 +165,11 @@ compile_tag("!", _Content, _State) ->
 
 compile_escaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  "mustache:escape(mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
+  ?MUSTACHE_STR ++ ":escape(" ++ ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
 
 compile_unescaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  "mustache:get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
+  ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
 
 template_dir(Mod) ->
   DefaultDirPath = filename:dirname(code:which(Mod)),
@@ -184,12 +188,12 @@ template_path(Mod) ->
   filename:join(DirPath, Basename ++ ".mustache").
 
 get(Key, Ctx, Mod) ->
-  get(Key, mustache_ctx:module(Mod, Ctx)).
+  get(Key, ?MUSTACHE_CTX:module(Mod, Ctx)).
 
 get(Key, Ctx) when is_list(Key) ->
   get(list_to_atom(Key), Ctx);
 get(Key, Ctx) ->
-  case mustache_ctx:get(Key, Ctx) of
+  case ?MUSTACHE_CTX:get(Key, Ctx) of
     {ok, Value} -> to_s(Value);
     {error, _} -> []
   end.
