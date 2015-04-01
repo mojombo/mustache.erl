@@ -91,27 +91,33 @@ module(Module, Ctx) ->
 %% Module
 %% ===================================================================
 
-get(Key, Ctx) ->
-    case maps:find(Key, Ctx) of
+get(Path, Ctx) when is_list(Path) ->
+    case get_path(Path, Ctx) of
         {ok, Value} -> {ok, Value};
-        error ->
-            get_from_module(Key, Ctx)
+        error       -> get_from_module(Path, Ctx)
     end.
 
-get_from_module(Key, Ctx) ->
+get_path([], Value) ->
+    {ok, Value};
+get_path([Key | Keys], Map) ->
+    case maps:find(Key, Map) of
+        {ok, Value} -> get_path(Keys, Value);
+        error       -> error
+    end.
+
+get_from_module([Key | Rest], Ctx) ->
     FunList = case module(Ctx) of
         {error, _} -> [];
         {ok, Module} -> [
-                fun() -> Module:Key(Ctx) end,
-                fun() -> Module:Key() end
+                fun() -> get_path(Rest, Module:Key(Ctx)) end,
+                fun() -> get_path(Rest, Module:Key()) end
             ]
     end,
     get_from_module(FunList).
 
 get_from_module([]) -> {error, not_found};
 get_from_module([ Fun | Rest ]) ->
-    try Value = Fun(),
-        {ok, Value}
+    try Fun()
     catch
         _:_ ->
         get_from_module(Rest)

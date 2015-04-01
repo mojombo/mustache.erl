@@ -31,6 +31,8 @@
                  section_re = undefined,
                  tag_re = undefined}).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -define(MUSTACHE_CTX, mustache_ctx).
 -define(MUSTACHE_CTX_STR, "mustache_ctx").
 -define(MUSTACHE_STR, "mustache").
@@ -45,7 +47,9 @@ compile(Body) when is_list(Body) ->
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
   Fun;
-compile(Mod) ->
+compile(Body) when is_binary(Body) ->
+    compile(unicode:characters_to_list(Body));
+compile(Mod) when is_atom(Mod) ->
   TemplatePath = template_path(Mod),
   compile(Mod, TemplatePath).
 
@@ -71,6 +75,9 @@ render(Mod) ->
 render(Body, Ctx) when is_list(Body) ->
   TFun = compile(Body),
   render(undefined, TFun, Ctx);
+render(Body, Ctx) when is_binary(Body) ->
+    TFun = compile(Body),
+    unicode:characters_to_binary(render(undefined, TFun, Ctx));
 render(Mod, File) when is_list(File) ->
   render(Mod, File, []);
 render(Mod, CompiledTemplate) ->
@@ -111,9 +118,10 @@ compiler(T, State) ->
 
 compile_section("#", Name, Content, State) ->
   Mod = State#mstate.mod,
+  Key = compile_dot_notation(Name),
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"true\" -> " ++ Result ++ "; " ++
       "\"false\" -> []; " ++
       "List when is_list(List) -> " ++
@@ -124,9 +132,10 @@ compile_section("#", Name, Content, State) ->
   "end()";
 compile_section("^", Name, Content, State) ->
   Mod = State#mstate.mod,
+  Key = compile_dot_notation(Name),
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"false\" -> " ++ Result ++ "; " ++
       "[] -> " ++ Result ++ "; " ++
       "_ -> [] "
@@ -165,11 +174,16 @@ compile_tag("!", _Content, _State) ->
 
 compile_escaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  ?MUSTACHE_STR ++ ":escape(" ++ ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
+  Key = compile_dot_notation(Content),
+  ?MUSTACHE_STR ++ ":escape(" ++ ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
 
 compile_unescaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
+  Key = compile_dot_notation(Content),
+  ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
+
+compile_dot_notation(Content) ->
+    "[" ++ string:join(string:tokens(Content, "."), ", ") ++ "]".
 
 template_dir(Mod) ->
   DefaultDirPath = filename:dirname(code:which(Mod)),
@@ -190,8 +204,6 @@ template_path(Mod) ->
 get(Key, Ctx, Mod) ->
   get(Key, ?MUSTACHE_CTX:module(Mod, Ctx)).
 
-get(Key, Ctx) when is_list(Key) ->
-  get(list_to_atom(Key), Ctx);
 get(Key, Ctx) ->
   case ?MUSTACHE_CTX:get(Key, Ctx) of
     {ok, Value} -> to_s(Value);
@@ -205,6 +217,8 @@ to_s(Val) when is_float(Val) ->
   io_lib:format("~.2f", [Val]);
 to_s(Val) when is_atom(Val) ->
   atom_to_list(Val);
+to_s(Val) when is_binary(Val) ->
+    unicode:characters_to_list(Val);
 to_s(Val) ->
   Val.
 

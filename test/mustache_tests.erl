@@ -42,6 +42,21 @@ specials_test() ->
     Result = mustache:render("\'Hello\n\"{{name}}\"~nYou \"have\" ju\0st\\ won\b\r\"${{value}}!\"\t", Ctx),
     ?assertEqual("\'Hello\n\"Chris\"~nYou \"have\" ju\0st\\ won\b\r\"$10000!\"\t", Result).
 
+binary_test() ->
+    Ctx = #{name => <<"Chris">>, value => 10000},
+    Result = mustache:render(<<"Hello {{name}}~nYou have just won ${{value}}!">>, Ctx),
+    ?assertEqual(<<"Hello Chris~nYou have just won $10000!">>, Result).
+
+simple_dot_test() ->
+    Ctx = #{name => #{first => <<"Emil">>, last => <<"Falk">>}},
+    Result = mustache:render(<<"Hello {{name.first}} {{name.last}}!">>, Ctx),
+    ?assertEqual(<<"Hello Emil Falk!">>, Result).
+
+section_dot_test() ->
+    Ctx = #{test => lists:seq(1,3)},
+    Result = mustache:render(<<"{{#test}}{{.}}{{/test}}">>, Ctx),
+    ?assertEqual(<<"123">>, Result).
+
 %% ===================================================================
 %% basic tag types
 %% ===================================================================
