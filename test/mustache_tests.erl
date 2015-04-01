@@ -25,22 +25,20 @@
 
 -module(mustache_tests).
 
--compile(export_all).
-
 -include_lib("eunit/include/eunit.hrl").
 
 simple_test() ->
-    Ctx = dict:from_list([{name, "world"}]),
+    Ctx = maps:from_list([{name, "world"}]),
     Result = mustache:render("Hello {{name}}!", Ctx),
     ?assertEqual("Hello world!", Result).
 
 integer_values_too_test() ->
-    Ctx = dict:from_list([{name, "Chris"}, {value, 10000}]),
+    Ctx = maps:from_list([{name, "Chris"}, {value, 10000}]),
     Result = mustache:render("Hello {{name}}~nYou have just won ${{value}}!", Ctx),
     ?assertEqual("Hello Chris~nYou have just won $10000!", Result).
 
 specials_test() ->
-    Ctx = dict:from_list([{name, "Chris"}, {value, 10000}]),
+    Ctx = maps:from_list([{name, "Chris"}, {value, 10000}]),
     Result = mustache:render("\'Hello\n\"{{name}}\"~nYou \"have\" ju\0st\\ won\b\r\"${{value}}!\"\t", Ctx),
     ?assertEqual("\'Hello\n\"Chris\"~nYou \"have\" ju\0st\\ won\b\r\"$10000!\"\t", Result).
 
@@ -83,7 +81,7 @@ tag_type_section_empty_list_test() ->
     test_helper("{{#name}}section{{/name}}", "", [{name, []}]).
 
 tag_type_section_nonempty_list_test() ->
-    CtxList = [{name, [ dict:new() || _ <- lists:seq(1,3) ]}],
+    CtxList = [{name, [ #{} || _ <- lists:seq(1,3) ]}],
     test_helper("{{#name}}section{{/name}}", "sectionsectionsection", CtxList).
 
 
@@ -100,7 +98,7 @@ tag_type_inverted_section_empty_list_test() ->
     test_helper("{{^name}}section{{/name}}", "section", [{name, []}]).
 
 tag_type_inverted_section_nonempty_list_test() ->
-    CtxList = [{name, [ dict:new() || _ <- lists:seq(1,3) ]}],
+    CtxList = [{name, [ #{} || _ <- lists:seq(1,3) ]}],
     test_helper("{{^name}}section{{/name}}", "", CtxList).
 
 
@@ -115,6 +113,6 @@ tag_type_comment_multiline_test() ->
 
 
 test_helper(Template, Expected, CtxList) ->
-    Ctx = dict:from_list(CtxList),
+    Ctx = maps:from_list(CtxList),
     ?assertEqual(Expected, mustache:render(Template, Ctx)).
 

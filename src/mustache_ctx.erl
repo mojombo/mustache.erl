@@ -41,23 +41,29 @@
 %% Create new context
 %% ===================================================================
 
-new() -> new([]).
+new() -> #{}.
 
 new(List) when is_list(List) ->
-    try dict:from_list(List)
+    try maps:from_list(List)
     catch
         _:_ -> ?NEW_EXIT(List)
     end;
 new(Data) when is_tuple(Data) ->
     case erlang:element(1, Data) of
-        dict -> Data;
+        dict ->
+            try maps:from_list(dict:to_list(Data))
+            catch
+                _:_ -> ?NEW_EXIT(Data)
+            end;
         _ -> ?NEW_EXIT(Data)
     end;
+new(Map) when is_map(Map) ->
+    Map;
 new(Data) ->
     ?NEW_EXIT(Data).
 
 to_list(Ctx) ->
-    List = dict:to_list(Ctx),
+    List = maps:to_list(Ctx),
     lists:keydelete(?MODULE_KEY, 1, List).
 
 %% ===================================================================
@@ -65,7 +71,7 @@ to_list(Ctx) ->
 %% ===================================================================
 
 merge(Ctx1, Ctx2) ->
-    dict:merge(fun(_, Value1, _) -> Value1 end, Ctx1, Ctx2).
+    maps:merge(Ctx2, Ctx1).
 
 
 %% ===================================================================
@@ -73,20 +79,20 @@ merge(Ctx1, Ctx2) ->
 %% ===================================================================
 
 module(Ctx) ->
-    case dict:find(?MODULE_KEY, Ctx) of
+    case maps:find(?MODULE_KEY, Ctx) of
         {ok, Module} -> {ok, Module};
         error -> {error, module_not_set}
     end.
 
 module(Module, Ctx) ->
-    dict:store(?MODULE_KEY, Module, Ctx).
+    maps:put(?MODULE_KEY, Module, Ctx).
 
 %% ===================================================================
 %% Module
 %% ===================================================================
 
 get(Key, Ctx) ->
-    case dict:find(Key, Ctx) of
+    case maps:find(Key, Ctx) of
         {ok, Value} -> {ok, Value};
         error ->
             get_from_module(Key, Ctx)

@@ -1,5 +1,4 @@
 -module(mustache_ctx_tests).
--compile(export_all).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -16,7 +15,7 @@ new_ctx_from_proplist_test() ->
 
 new_ctx_from_dict_test() ->
     List = [{k,v}],
-    Dict = dict:from_list(List),
+    Dict = maps:from_list(List),
     CtxFromList = mustache_ctx:new(List),
     CtxFromDict = mustache_ctx:new(Dict),
     ?assertEqual(CtxFromList, CtxFromDict).
@@ -62,7 +61,7 @@ get_from_module_not_found_test() ->
 
 get_from_module_test_() ->
     {foreach,
-        fun() -> ok = meck:new(mock_module) end,
+        fun() -> ok = meck:new(mock_module, [non_strict]) end,
         fun(_) -> ok = meck:unload(mock_module) end,
         [
             {"fun/1",               fun get_from_module_fun_1_/0},
