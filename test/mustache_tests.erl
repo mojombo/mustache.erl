@@ -52,10 +52,26 @@ simple_dot_test() ->
     Result = mustache:render(<<"Hello {{name.first}} {{name.last}}!">>, Ctx),
     ?assertEqual(<<"Hello Emil Falk!">>, Result).
 
-section_dot_test() ->
+simple_section_dot_test() ->
     Ctx = #{test => lists:seq(1,3)},
     Result = mustache:render(<<"{{#test}}{{.}}{{/test}}">>, Ctx),
     ?assertEqual(<<"123">>, Result).
+
+complex_section_dot_test() ->
+    Ctx = #{test1 => #{test2 => lists:seq(1, 3)}},
+    Result = mustache:render(<<"{{#test1.test2}}{{.}}{{/test1.test2}}">>, Ctx),
+    ?assertEqual(<<"123">>, Result).
+
+fun_test() ->
+    Ctx = #{test1 => fun (Text) -> re:replace(Text, "xxx", "yyy") end,
+            test2 => "xxx"},
+    Result = mustache:render(<<"{{#test1}}{{test2}}{{/test1}}">>, Ctx),
+    ?assertEqual(<<"yyy">>, Result).
+
+set_delimiter_test() ->
+    Ctx = #{test1 => <<"TEST1">>, test2 => <<"TEST2">>},
+    Result = mustache:render(<<"{{=[[ ]]=}}[[test1]] [[={{ }}=]]{{test2}}">>, Ctx),
+    ?assertEqual(<<"TEST1 TEST2">>, Result).
 
 %% ===================================================================
 %% basic tag types

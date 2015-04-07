@@ -26,6 +26,7 @@
 -module(mustache_ctx).
 
 -define(MODULE_KEY, '__mod__').
+-define(THIS_KEY, '__this__').
 -define(NEW_EXIT(Data), exit({improper_ctx, Data})).
 
 -export([ new/0, new/1, to_list/1 ]).
@@ -70,9 +71,10 @@ to_list(Ctx) ->
 %% Merge
 %% ===================================================================
 
-merge(Ctx1, Ctx2) ->
-    maps:merge(Ctx2, Ctx1).
-
+merge(Ctx1, Ctx2) when is_map(Ctx1), is_map(Ctx2) ->
+    maps:merge(Ctx2, Ctx1);
+merge(This, Ctx) when is_map(Ctx) ->
+    maps:put(?THIS_KEY, This, Ctx).
 
 %% ===================================================================
 %% Dynamic data module
@@ -91,6 +93,8 @@ module(Module, Ctx) ->
 %% Module
 %% ===================================================================
 
+get([], Ctx) ->
+    {ok, maps:get(?THIS_KEY, Ctx)};
 get(Path, Ctx) when is_list(Path) ->
     case get_path(Path, Ctx) of
         {ok, Value} -> {ok, Value};

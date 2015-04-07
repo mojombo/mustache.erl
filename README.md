@@ -12,11 +12,11 @@ numbering.
 
 Working with Mustache means dealing with templates, views, and contexts.
 Templates contain HTML (or some other format) and Mustache tags that specify
-what data to pull in. A template can be either a string or a file (usually
-ending in .mustache). Views are Erlang modules that can define functions that
-are called and provide the data for the template tags. A context is an Erlang
-dict that contains the current context from which tags can pull data. A few
-examples will clarify how these items interact.
+what data to pull in. A template can be either a binary, a string or a file
+(usually ending in .mustache). Views are Erlang modules that can define
+functions that are called and provide the data for the template tags. A
+context is an Erlang map that contains the current context from which tags
+can pull data. A few examples will clarify how these items interact.
 
 NOTE: This is alpha software. Do not use it in production without extensive
 testing. The API may change at any time. It still lacks some of the features
@@ -41,8 +41,8 @@ The Simplest Example
 The simplest example involves using a string template and a context from the
 REPL.
 
-    1> Ctx = dict:from_list([{planet, "World!"}]).
-    {dict,1,16,16,8,80,48,...}
+    1> Ctx = #{planet => "World!"}.
+    #{planet => "World!"}
 
     2> mustache:render("Hello {{planet}}", Ctx).
     "Hello World!"
@@ -128,9 +128,9 @@ Using the same template and view as above, we can replace the name tag with
 different data by constructing a context and passing it to `render`:
 
 
-    1> Ctx = dict:from_list([{name, "Chris"}]).
-    1> TFun = mustache:compile(simple).
-    2> mustache:render(simple, TFun, Ctx).
+    1> Ctx = #{name => "Chris"},
+    1> TFun = mustache:compile(simple),
+    1> mustache:render(simple, TFun, Ctx).
 
 This will produce the following output:
 
@@ -141,7 +141,7 @@ This will produce the following output:
 The context is also accessible from view functions, making it easy to pass in
 initialization data. Consider a case where we want to pass in a user ID:
 
-    Ctx = dict:from_list([{id, 42}])
+    Ctx = #{id => 42}
 
 View functions can get access to the context by accepting a single argument:
 
@@ -171,6 +171,12 @@ The most basic tag is the variable. A `{{name}}` tag in a basic template will
 try to call the `name` function on your view. By default a variable "miss"
 returns an empty string.
 
+Dot-notation is also supported thus we can write:
+
+    1> Ctx = #{nested => #{value => 42}},
+    1> mustache:render(<<"{{nested.value}}">>, Ctx).
+    <<"42">>
+
 All variables are HTML escaped by default. If you want to return unescaped
 HTML, use the triple mustache: `{{{name}}}`.
 
@@ -192,7 +198,7 @@ begin with a pound and end with a slash. The difference, however, is in the
 view: if the function called returns a list, the section is repeated as the
 list is iterated over.
 
-Each item in the enumerable is expected to be a dict that will then become the
+Each item in the enumerable is expected to be a map that will then become the
 context of the corresponding iteration. In this way we can construct loops.
 
 For example, imagine this template:
@@ -204,10 +210,29 @@ For example, imagine this template:
 And this view code:
 
     repo() ->
-      [dict:from_list([{name, Name}]) || Name <- ["Tom", "Chris", "PJ"]].
+      [#{name => Name} || Name <- ["Tom", "Chris", "PJ"]].
 
 When rendered, our view will contain a list of each of the names in the source
 list.
+
+The dot-tag is also supported in list sections:
+    1> Ctx = #{list => [1,2,3]},
+    1> mustache:render(<<"{{#list}}{{.}}{{/list}}">>, Ctx).
+    <<"123">>
+
+### Lambdas
+Simple lambdas is supported:
+
+    1> Ctx = #{lambda => fun (Text) -> re:replace(Text, "NAME", "Emil") end},
+    1> mustache:render(<<"{{#lambda}}NAME{{/lambda}}">>, Ctx).
+    <<"Emil">>
+
+### Set delimiters
+Changing the set delimiters is possible:
+
+    1> Ctx = #{name => <<"Emil">>},
+    1> mustache:render(<<"{{=[[ ]]=}}[[name]]">>, Ctx).
+    <<"Emil">>
 
 ### Comments
 
