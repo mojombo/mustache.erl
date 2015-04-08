@@ -29,7 +29,10 @@
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
-                 tag_re = undefined}).
+                 tag_re = undefined,
+                 path = []}).
+
+-include_lib("eunit/include/eunit.hrl").
 
 -define(MUSTACHE_CTX, mustache_ctx).
 -define(MUSTACHE_CTX_STR, "mustache_ctx").
@@ -45,7 +48,9 @@ compile(Body) when is_list(Body) ->
   Bindings = erl_eval:new_bindings(),
   {value, Fun, _} = erl_eval:expr(Form, Bindings),
   Fun;
-compile(Mod) ->
+compile(Body) when is_binary(Body) ->
+    compile(unicode:characters_to_list(Body));
+compile(Mod) when is_atom(Mod) ->
   TemplatePath = template_path(Mod),
   compile(Mod, TemplatePath).
 
@@ -71,6 +76,9 @@ render(Mod) ->
 render(Body, Ctx) when is_list(Body) ->
   TFun = compile(Body),
   render(undefined, TFun, Ctx);
+render(Body, Ctx) when is_binary(Body) ->
+    TFun = compile(Body),
+    unicode:characters_to_binary(render(undefined, TFun, Ctx));
 render(Mod, File) when is_list(File) ->
   render(Mod, File, []);
 render(Mod, CompiledTemplate) ->
@@ -85,11 +93,8 @@ render(Mod, CompiledTemplate, CtxData) ->
   lists:flatten(CompiledTemplate(Ctx1)).
 
 pre_compile(T, State) ->
-  SectionRE = "{{(#|\\^)([^}]*)}}\\s*(.+?){{/\\2}}\\s*",
-  {ok, CompiledSectionRE} = re:compile(SectionRE, [dotall]),
-  TagRE = "{{(#|=|!|<|>|{|&)?(.+?)\\1?}}+",
-  {ok, CompiledTagRE} = re:compile(TagRE, [dotall]),
-  State2 = State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE},
+  {Left, Right} = {"{{", "}}"},
+  State2 = set_delimiters(Left, Right, State),
   "fun(Ctx) -> " ++
     compiler(T, State2) ++ " end.".
 
@@ -111,40 +116,44 @@ compiler(T, State) ->
 
 compile_section("#", Name, Content, State) ->
   Mod = State#mstate.mod,
-  Result = compiler(Content, State),
+  Key = compile_dot_notation(Name),
+  Result = compiler(Content, add_section_path(Key, State)),
   "fun() -> " ++
-    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"true\" -> " ++ Result ++ "; " ++
       "\"false\" -> []; " ++
       "List when is_list(List) -> " ++
         "[fun(Ctx) -> " ++ Result ++ " end(" ++ ?MUSTACHE_CTX_STR ++ ":merge(SubCtx, Ctx)) || SubCtx <- List]; " ++
+      "Fun when is_function(Fun, 1) -> " ++
+        "Fun(" ++ Result ++ ");"
       "Else -> " ++
-        "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [" ++ Name ++ ", Else])}) " ++
+        "throw({template, io_lib:format(\"Bad context for ~p: ~p\", [\"" ++ Name ++ "\", Else])}) " ++
     "end " ++
   "end()";
 compile_section("^", Name, Content, State) ->
   Mod = State#mstate.mod,
+  Key = compile_dot_notation(Name),
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"false\" -> " ++ Result ++ "; " ++
       "[] -> " ++ Result ++ "; " ++
       "_ -> [] "
     "end " ++
   "end()".
 
-compile_tags(T, State) ->
-  Res = re:run(T, State#mstate.tag_re),
+compile_tags(T, State0) ->
+  Res = re:run(T, State0#mstate.tag_re),
   case Res of
     {match, [{M0, M1}, K, {C0, C1}]} ->
       Front = string:substr(T, 1, M0),
       Back = string:substr(T, M0 + M1 + 1),
       Content = string:substr(T, C0 + 1, C1),
       Kind = tag_kind(T, K),
-      Result = compile_tag(Kind, Content, State),
+      {Result, State1} = compile_tag(Kind, Content, State0),
       "[\"" ++ escape_special(Front) ++
         "\" | [" ++ Result ++
-        " | " ++ compile_tags(Back, State) ++ "]]";
+        " | " ++ compile_tags(Back, State1) ++ "]]";
     nomatch ->
       "[\"" ++ escape_special(T) ++ "\"]"
   end.
@@ -155,21 +164,29 @@ tag_kind(T, {K0, K1}) ->
   string:substr(T, K0 + 1, K1).
 
 compile_tag(none, Content, State) ->
-  compile_escaped_tag(Content, State);
+  {compile_escaped_tag(Content, State), State};
 compile_tag("&", Content, State) ->
-  compile_unescaped_tag(Content, State);
+  {compile_unescaped_tag(Content, State), State};
 compile_tag("{", Content, State) ->
-  compile_unescaped_tag(Content, State);
-compile_tag("!", _Content, _State) ->
-  "[]".
+  {compile_unescaped_tag(Content, State), State};
+compile_tag("!", _Content, State) ->
+  {"[]", State};
+compile_tag("=", Content, State) ->
+  [Left, Right] = string:tokens(Content, " "),
+  {"[]", set_delimiters(Left, Right, State)}.
 
 compile_escaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  ?MUSTACHE_STR ++ ":escape(" ++ ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
+  Key = compile_dot_notation(Content),
+  ?MUSTACHE_STR ++ ":escape(" ++ ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
 
 compile_unescaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
+  Key = compile_dot_notation(Content),
+  ?MUSTACHE_STR ++ ":get(" ++ Key ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
+
+compile_dot_notation(Content) ->
+    "[" ++ string:join(string:tokens(Content, "."), ", ") ++ "]".
 
 template_dir(Mod) ->
   DefaultDirPath = filename:dirname(code:which(Mod)),
@@ -190,8 +207,6 @@ template_path(Mod) ->
 get(Key, Ctx, Mod) ->
   get(Key, ?MUSTACHE_CTX:module(Mod, Ctx)).
 
-get(Key, Ctx) when is_list(Key) ->
-  get(list_to_atom(Key), Ctx);
 get(Key, Ctx) ->
   case ?MUSTACHE_CTX:get(Key, Ctx) of
     {ok, Value} -> to_s(Value);
@@ -205,6 +220,8 @@ to_s(Val) when is_float(Val) ->
   io_lib:format("~.2f", [Val]);
 to_s(Val) when is_atom(Val) ->
   atom_to_list(Val);
+to_s(Val) when is_binary(Val) ->
+    unicode:characters_to_list(Val);
 to_s(Val) ->
   Val.
 
@@ -234,6 +251,28 @@ escape_char($')  -> "\\'";
 escape_char($")  -> "\\\"";
 escape_char($\\) -> "\\\\";
 escape_char(Char) -> Char.
+
+set_delimiters(Left, Right, State) ->
+  {ok, CompiledSectionRE} = section_re(Left, Right),
+  {ok, CompiledTagRE} = tag_re(Left, Right),
+  State#mstate{section_re = CompiledSectionRE, tag_re = CompiledTagRE}.
+
+section_re(Left0, Right0) ->
+    {Left1, Right1} = {escape_delimiter(Left0), escape_delimiter(Right0)},
+    Stop = ["([^", hd(Right0), "]*)"],
+    Regexp = [Left1, "(#|\\^)", Stop, Right1, "\\s*(.+?)", Left1, "/\\2", Right1, "\\s*"],
+    re:compile(Regexp, [dotall]).
+
+tag_re(Left0, Right0) ->
+    {Left1, Right1} = {escape_delimiter(Left0), escape_delimiter(Right0)},
+    Regexp = [Left1, "(#|=|!|<|>|{|&)?(.+?)\\1?", Right1, "+"],
+    re:compile(Regexp, [dotall]).
+
+escape_delimiter(Delimiter) ->
+    lists:map(fun (Char) -> [$\\, Char] end, Delimiter).
+
+add_section_path(Key, #mstate{path = Path} = State) ->
+    State#mstate{path = Path ++ Key}.
 
 %%---------------------------------------------------------------------------
 

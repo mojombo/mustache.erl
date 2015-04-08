@@ -26,6 +26,7 @@
 -module(mustache_ctx).
 
 -define(MODULE_KEY, '__mod__').
+-define(THIS_KEY, '__this__').
 -define(NEW_EXIT(Data), exit({improper_ctx, Data})).
 
 -export([ new/0, new/1, to_list/1 ]).
@@ -41,71 +42,86 @@
 %% Create new context
 %% ===================================================================
 
-new() -> new([]).
+new() -> #{}.
 
 new(List) when is_list(List) ->
-    try dict:from_list(List)
+    try maps:from_list(List)
     catch
         _:_ -> ?NEW_EXIT(List)
     end;
 new(Data) when is_tuple(Data) ->
     case erlang:element(1, Data) of
-        dict -> Data;
+        dict ->
+            try maps:from_list(dict:to_list(Data))
+            catch
+                _:_ -> ?NEW_EXIT(Data)
+            end;
         _ -> ?NEW_EXIT(Data)
     end;
+new(Map) when is_map(Map) ->
+    Map;
 new(Data) ->
     ?NEW_EXIT(Data).
 
 to_list(Ctx) ->
-    List = dict:to_list(Ctx),
+    List = maps:to_list(Ctx),
     lists:keydelete(?MODULE_KEY, 1, List).
 
 %% ===================================================================
 %% Merge
 %% ===================================================================
 
-merge(Ctx1, Ctx2) ->
-    dict:merge(fun(_, Value1, _) -> Value1 end, Ctx1, Ctx2).
-
+merge(Ctx1, Ctx2) when is_map(Ctx1), is_map(Ctx2) ->
+    maps:merge(Ctx2, Ctx1);
+merge(This, Ctx) when is_map(Ctx) ->
+    maps:put(?THIS_KEY, This, Ctx).
 
 %% ===================================================================
 %% Dynamic data module
 %% ===================================================================
 
 module(Ctx) ->
-    case dict:find(?MODULE_KEY, Ctx) of
+    case maps:find(?MODULE_KEY, Ctx) of
         {ok, Module} -> {ok, Module};
         error -> {error, module_not_set}
     end.
 
 module(Module, Ctx) ->
-    dict:store(?MODULE_KEY, Module, Ctx).
+    maps:put(?MODULE_KEY, Module, Ctx).
 
 %% ===================================================================
 %% Module
 %% ===================================================================
 
-get(Key, Ctx) ->
-    case dict:find(Key, Ctx) of
+get([], Ctx) ->
+    {ok, maps:get(?THIS_KEY, Ctx)};
+get(Path, Ctx) when is_list(Path) ->
+    case get_path(Path, Ctx) of
         {ok, Value} -> {ok, Value};
-        error ->
-            get_from_module(Key, Ctx)
+        error       -> get_from_module(Path, Ctx)
     end.
 
-get_from_module(Key, Ctx) ->
+get_path([], Value) ->
+    {ok, Value};
+get_path([Key | Keys], Map) ->
+    case maps:find(Key, Map) of
+        {ok, Value} -> get_path(Keys, Value);
+        error       -> error
+    end.
+
+get_from_module([Key | Rest], Ctx) ->
     FunList = case module(Ctx) of
         {error, _} -> [];
         {ok, Module} -> [
-                fun() -> Module:Key(Ctx) end,
-                fun() -> Module:Key() end
+                fun() -> get_path(Rest, Module:Key(Ctx)) end,
+                fun() -> get_path(Rest, Module:Key()) end
             ]
     end,
     get_from_module(FunList).
 
 get_from_module([]) -> {error, not_found};
 get_from_module([ Fun | Rest ]) ->
-    try Value = Fun(),
-        {ok, Value}
+    try Fun()
     catch
         _:_ ->
         get_from_module(Rest)
