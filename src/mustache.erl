@@ -205,6 +205,8 @@ to_s(Val) when is_float(Val) ->
   io_lib:format("~.2f", [Val]);
 to_s(Val) when is_atom(Val) ->
   atom_to_list(Val);
+to_s(Val) when is_binary(Val) ->
+  binary_to_list(Val);
 to_s(Val) ->
   Val.
 
