@@ -195,7 +195,7 @@ get(Key, Ctx) when is_list(Key) ->
 get(Key, Ctx) ->
   case ?MUSTACHE_CTX:get(Key, Ctx) of
     {ok, Value} -> to_s(Value);
-    {error, _} -> "{{" ++ to_s(Key) ++ "}}"
+    {error, _} -> []
   end.
 
 
@@ -240,4 +240,3 @@ escape_char(Char) -> Char.
 start([T]) ->
   Out = render(list_to_atom(T)),
   io:format(Out ++ "~n", []).
-  
