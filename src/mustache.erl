@@ -113,7 +113,7 @@ compile_section("#", Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get('" ++ Name ++ "', Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"true\" -> " ++ Result ++ "; " ++
       "\"false\" -> []; " ++
       "List when is_list(List) -> " ++
@@ -126,7 +126,7 @@ compile_section("^", Name, Content, State) ->
   Mod = State#mstate.mod,
   Result = compiler(Content, State),
   "fun() -> " ++
-    "case " ++ ?MUSTACHE_STR ++ ":get(" ++ Name ++ ", Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
+    "case " ++ ?MUSTACHE_STR ++ ":get('" ++ Name ++ "', Ctx, " ++ atom_to_list(Mod) ++ ") of " ++
       "\"false\" -> " ++ Result ++ "; " ++
       "[] -> " ++ Result ++ "; " ++
       "_ -> [] "
@@ -165,11 +165,11 @@ compile_tag("!", _Content, _State) ->
 
 compile_escaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  ?MUSTACHE_STR ++ ":escape(" ++ ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ "))".
+  ?MUSTACHE_STR ++ ":escape(" ++ ?MUSTACHE_STR ++ ":get('" ++ Content ++ "', Ctx, " ++ atom_to_list(Mod) ++ "))".
 
 compile_unescaped_tag(Content, State) ->
   Mod = State#mstate.mod,
-  ?MUSTACHE_STR ++ ":get(" ++ Content ++ ", Ctx, " ++ atom_to_list(Mod) ++ ")".
+  ?MUSTACHE_STR ++ ":get('" ++ Content ++ "', Ctx, " ++ atom_to_list(Mod) ++ ")".
 
 template_dir(Mod) ->
   DefaultDirPath = filename:dirname(code:which(Mod)),
