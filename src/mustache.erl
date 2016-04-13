@@ -25,7 +25,7 @@
 
 -module(mustache).  %% v0.1.1
 -author("Tom Preston-Werner").
--export([compile/1, compile/2, render/1, render/2, render/3, get/2, get/3, escape/1, start/1]).
+-export([compile/1, compile/2, render/1, render/2, render/3, get/2, get/3, escape/1, start/1, trim_whitespace/1, dict_from_file/1]).
 
 -record(mstate, {mod = undefined,
                  section_re = undefined,
@@ -195,7 +195,7 @@ get(Key, Ctx) when is_list(Key) ->
 get(Key, Ctx) ->
   case ?MUSTACHE_CTX:get(Key, Ctx) of
     {ok, Value} -> to_s(Value);
-    {error, _} -> []
+    {error, _} -> "{{" ++ to_s(Key) ++ "}}"
   end.
 
 
@@ -234,6 +234,34 @@ escape_char($')  -> "\\'";
 escape_char($")  -> "\\\"";
 escape_char($\\) -> "\\\\";
 escape_char(Char) -> Char.
+
+trim_whitespace(Input) ->
+   re:replace(Input, "(^\\s+)|(\\s+$)", "", [global,{return,list}]).
+
+dict_from_file(Filename) ->
+  case file:open(Filename, [read]) of
+    {ok, FP} ->
+      dict_from_file_(FP, dict:new());
+    {error,_} ->
+      'invalid_filename'
+  end.
+
+dict_from_file_(FP, Dict) ->
+  case file:read_line(FP) of
+    {ok, LN} ->
+      case string:tokens(LN, ",") of
+        [K,V|_] ->
+          KK = trim_whitespace(K),
+          VV = trim_whitespace(V),
+          Dict2 = dict:store(KK, VV, Dict);
+        _ ->
+          Dict2 = Dict
+      end,
+      dict_from_file_(FP, Dict2);
+    _ ->
+      file:close(FP),
+      Dict
+  end.
 
 %%---------------------------------------------------------------------------
 
